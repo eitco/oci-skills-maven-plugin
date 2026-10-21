@@ -6,27 +6,132 @@
     <parent>
         <groupId>de.eitco.cicd</groupId>
         <artifactId>eitco-oss-parent</artifactId>
-        <version>0.0.14</version>
+        <version>1.1.1</version>
     </parent>
 
-
-    <!-- TODO: replace with your coordinates -->
-    <groupId>de.eitco</groupId>
-    <artifactId>eitco-maven-template</artifactId>
+    <artifactId>oci-skills-maven-plugin-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>oci skills maven plugin parent</name>
+    <description>builds AI skills as OCI images and pushes them to OCI registries</description>
+    <url>https://github.com/eitco/oci-skills-maven-plugin</url>
+
 
     <developers>
-        <!-- TODO: add developers concerned -->
+        <developer>
+            <name>Jan Schwarz</name>
+            <email>jschwarz@eitco.de</email>
+        </developer>
     </developers>
 
+
     <scm>
-        <!-- TODO: replace with your repository url -->
-        <url>https://github.com/eitco/maven-template.git</url>
-        <connection>scm:git:https://github.com/eitco/maven-template.git</connection>
-        <developerConnection>scm:git:https://github.com/eitco/maven-template.git</developerConnection>
+        <url>https://github.com/eitco/oci-skills-maven-plugin.git</url>
+        <connection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</connection>
+        <developerConnection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</developerConnection>
+        <tag>HEAD</tag>
     </scm>
 
+    <modules>
+        <module>oci-skills-core</module>
+        <module>oci-skills-registry-oras</module>
+        <module>oci-skills-maven-plugin</module>
+    </modules>
+
+    <properties>
+        <maven.version>3.9.16</maven.version>
+        <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
+        <oras.java.sdk.version>0.8.5</oras.java.sdk.version>
+        <junit.version>5.13.4</junit.version>
+        <assertj.version>3.27.7</assertj.version>
+        <project.build.outputTimestamp>2026-10-20T00:00:00Z</project.build.outputTimestamp>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>de.eitco.cicd</groupId>
+                <artifactId>oci-skills-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.eitco.cicd</groupId>
+                <artifactId>oci-skills-registry-oras</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>land.oras</groupId>
+                <artifactId>oras-java-sdk</artifactId>
+                <version>${oras.java.sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven</groupId>
+                <artifactId>maven-plugin-api</artifactId>
+                <version>${maven.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven</groupId>
+                <artifactId>maven-core</artifactId>
+                <version>${maven.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.plugin-tools</groupId>
+                <artifactId>maven-plugin-annotations</artifactId>
+                <version>${maven.plugin.tools.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>${java.language.version}</release>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <artifactId>maven-release-plugin</artifactId>
