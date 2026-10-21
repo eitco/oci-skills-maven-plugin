@@ -16,8 +16,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -83,17 +83,10 @@ public class SkillBuildMojo extends AbstractSkillMojo {
     private File generatedSkillsDirectory;
 
     /**
-     * Whether to build a reproducible image. If {@code true}, {@code project.build.outputTimestamp} is used for all
-     * timestamps and must be set. If {@code false}, the current time is used.
+     * The start time of the maven build - used for all timestamps of the images.
      */
-    @Parameter(property = "skill.reproducible", defaultValue = "true")
-    private boolean reproducible;
-
-    /**
-     * The timestamp used for reproducible builds - ISO-8601 or seconds since epoch.
-     */
-    @Parameter(defaultValue = "${project.build.outputTimestamp}")
-    private String outputTimestamp;
+    @Parameter(defaultValue = "${session.request.startTime}", readonly = true, required = true)
+    private Date buildStartTime;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -103,10 +96,7 @@ public class SkillBuildMojo extends AbstractSkillMojo {
         } catch (IllegalArgumentException e) {
             throw new MojoFailureException(e.getMessage(), e);
         }
-        Instant timestamp = BuildTimestamp.resolve(reproducible, outputTimestamp, Clock.systemUTC());
-        if (!reproducible) {
-            getLog().warn("reproducible is disabled - using the current time " + timestamp + " for the skill image");
-        }
+        Instant timestamp = buildStartTime.toInstant();
         FileSelection selection = new FileSelection(includes, excludes, executables);
         SkillCardSettings settings = new SkillCardSettings(namespace, version);
         List<Path> skills = skills();

@@ -14,7 +14,7 @@ src/main/skills/<skill>/  --oci-skills:build-->  target/skill-oci/<skill>/ (OCI 
 
 | module                      | content                                                                    |
 |-----------------------------|----------------------------------------------------------------------------|
-| `oci-skills-core`           | SkillCard validation, reproducible tar layer, OCI config/manifest/layout   |
+| `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout  |
 | `oci-skills-registry-oras`  | `OciRegistryClient` implementation based on the ORAS java SDK              |
 | `oci-skills-maven-plugin`   | the goals `oci-skills:build` and `oci-skills:push`                         |
 
@@ -23,11 +23,6 @@ The core has no dependency on maven, nexus or ORAS.
 ## Usage
 
 ```xml
-<properties>
-    <!-- required for reproducible skill images -->
-    <project.build.outputTimestamp>2026-10-16T14:45:03Z</project.build.outputTimestamp>
-</properties>
-
 <build>
     <plugins>
         <plugin>
@@ -187,7 +182,6 @@ Without `registryServerId` the push is anonymous.
 | `namespace`       | `skill.namespace`       | - (required)                            | namespace of all skills - a DNS label                                 |
 | `version`         | `skill.version`         | `${project.version}`                    | version of all skills, determines the tag                             |
 | `generatedSkillsDirectory` | `skill.generatedSkillsDirectory` | `${project.build.directory}/generated-skills` | the generated `skill.yaml` and `SKILL.md` are written to `<dir>/<skill>/` |
-| `reproducible`    | `skill.reproducible`    | `true`                                  | use `project.build.outputTimestamp` (required) instead of current time |
 
 ### `oci-skills:push` (default phase `deploy`)
 
@@ -212,9 +206,9 @@ Additional CAs are trusted in addition to the JVM defaults. TLS verification can
 
 * one `tar+gzip` layer with all selected files, paths relative to the skill directory - `SKILL.md` replaced by the
   generated one, plus the generated `skill.yaml`
-* reproducible: entries sorted by UTF-8 path, uid/gid `0`, empty owner/group, mode `0644` (`0755` for directories and
-  executables), all timestamps from `project.build.outputTimestamp`, gzip header without timestamp. Identical input
-  produces identical digests on the same JDK.
+* normalized: entries sorted by UTF-8 path, uid/gid `0`, empty owner/group, mode `0644` (`0755` for directories and
+  executables), all timestamps set to the start time of the maven build, gzip header without timestamp. The images are
+  not reproducible - every build gets a new timestamp and therefore new digests.
 * config `linux/amd64` with the layer's diffID - byte identical to skillctl
 * manifest annotations:
 

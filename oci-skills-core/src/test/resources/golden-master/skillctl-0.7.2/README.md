@@ -16,7 +16,6 @@ Known differences that are intentional (format compatibility, not byte identity)
 
 - skillctl copies uid/gid/user names, file modes and mtimes from the file system, the plugin normalizes them.
 - skillctl writes directory entries without trailing `/`, the plugin writes them with trailing `/`.
-- skillctl uses the build time as `org.opencontainers.image.created`, the plugin uses `project.build.outputTimestamp`.
 - skillctl uses `<namespace>/<name>:<tag>` as `org.opencontainers.image.ref.name` in `index.json`, the plugin uses the tag only.
 - The plugin adds `metadata.namespace` and `metadata.version` to the frontmatter of the packaged `SKILL.md`, skillctl
   packages the file unchanged. All other files - including `skill.yaml` - and the word count are identical.

@@ -10,7 +10,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <project.build.outputTimestamp>2026-10-16T14:45:03Z</project.build.outputTimestamp>
     </properties>
 
     <build>

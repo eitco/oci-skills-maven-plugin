@@ -1,6 +1,8 @@
 import groovy.json.JsonSlurper
 
 import java.security.MessageDigest
+import java.time.Duration
+import java.time.Instant
 import java.util.zip.GZIPInputStream
 
 File layout = new File(basedir, "target/skill-oci/nexus-test")
@@ -23,10 +25,13 @@ assert manifest.mediaType == "application/vnd.oci.image.manifest.v1+json"
 assert manifest.config.mediaType == "application/vnd.oci.image.config.v1+json"
 assert manifest.layers.size() == 1
 assert manifest.layers[0].mediaType == "application/vnd.oci.image.layer.v1.tar+gzip"
-assert manifest.annotations == [
+// the image is stamped with the start time of the maven build
+Instant created = Instant.parse(manifest.annotations["org.opencontainers.image.created"])
+assert Duration.between(created, Instant.now()) < Duration.ofMinutes(10)
+assert !created.isAfter(Instant.now())
+assert manifest.annotations.findAll { it.key != "org.opencontainers.image.created" } == [
         "io.skillimage.status"                : "draft",
         "io.skillimage.wordcount"             : "11",
-        "org.opencontainers.image.created"    : "2026-10-16T14:45:03Z",
         "org.opencontainers.image.description": "Test skill for OCI registry",
         "org.opencontainers.image.title"      : "nexus-test",
         "org.opencontainers.image.vendor"     : "cicd",
