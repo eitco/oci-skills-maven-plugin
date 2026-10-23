@@ -5,7 +5,7 @@
     <parent>
         <groupId>de.eitco.cicd.ociskills</groupId>
         <artifactId>oci-skills-maven-plugin-parent</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>0.0.2</version>
     </parent>
 
     <artifactId>oci-skills-maven-plugin</artifactId>
