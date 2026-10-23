@@ -25,14 +25,13 @@ class SkillMarkdownWriterTest {
     }
 
     @Test
-    void addsManagedValuesAsMetadata() throws Exception {
+    void addsManagedValuesToTheTopLevel() throws Exception {
         assertThat(write(TestSkills.DEFAULT_SKILL_MD, "0.0.1")).isEqualTo("""
                 ---
                 name: nexus-test
                 description: Test skill for OCI registry
-                metadata:
-                  namespace: cicd
-                  version: 0.0.1
+                namespace: cicd
+                version: 0.0.1
                 ---
 
                 # Nexus Test
@@ -59,10 +58,10 @@ class SkillMarkdownWriterTest {
                 name: nexus-test
                 metadata:
                   author: eitco
-                  namespace: cicd
-                  version: 1.0.0-SNAPSHOT
                 license: MIT
                 allowed-tools: Bash Read
+                namespace: cicd
+                version: 1.0.0-SNAPSHOT
                 ---
                 # Nexus Test
                 """);
@@ -79,9 +78,9 @@ class SkillMarkdownWriterTest {
     void writesVersionThatLooksLikeANumberAsString() throws Exception {
         String content = write(TestSkills.DEFAULT_SKILL_MD, "1.10");
 
-        assertThat(content).contains("  version: \"1.10\"\n");
+        assertThat(content).contains("\nversion: \"1.10\"\n");
         TestSkills.write(skillDirectory, "SKILL.md", content);
-        assertThat(reader.read(skillDirectory).frontmatter().metadata()).containsEntry("version", "1.10");
+        assertThat(reader.read(skillDirectory).frontmatter().version()).isEqualTo("1.10");
     }
 
     @Test

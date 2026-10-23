@@ -151,12 +151,21 @@ class SkillValidatorTest {
     }
 
     @Test
-    void rejectsMetadataManagedByThePlugin() {
-        assertThat(validationErrorFor(withMetadata(Map.of("version", "1.0", "namespace", "x"))).problems())
+    void acceptsMetadataNamedLikeManagedFields() {
+        assertThatCode(() -> validate(withMetadata(Map.of("version", "1.0", "namespace", "x")), skillDirectory))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsFieldsManagedByThePlugin() {
+        Skill skill = new Skill(new SkillFrontmatter("nexus-test", "desc", Map.of(), null, "x", "1.0"),
+                new SkillCardSettings("cicd", "0.0.1"));
+
+        assertThat(validationErrorFor(skill).problems())
                 .containsExactlyInAnyOrder(
-                        "SKILL.md frontmatter: metadata.namespace is managed by the plugin - remove it and configure "
+                        "SKILL.md frontmatter: namespace is managed by the plugin - remove it and configure "
                                 + "<namespace> in the plugin",
-                        "SKILL.md frontmatter: metadata.version is managed by the plugin - remove it and configure "
+                        "SKILL.md frontmatter: version is managed by the plugin - remove it and configure "
                                 + "<version> in the plugin");
     }
 

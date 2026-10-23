@@ -1,6 +1,5 @@
 package de.eitco.cicd.ociskills.core.skillcard;
 
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.io.ByteArrayOutputStream;
@@ -9,16 +8,19 @@ import java.util.List;
 
 /**
  * Writes the {@code SKILL.md} that is put into the image: the frontmatter of the original file with the values
- * managed by the plugin added to {@code metadata}, followed by the unchanged rest of the file.
+ * managed by the plugin - {@code namespace} and {@code version} - added as top level fields, followed by the unchanged
+ * rest of the file.
  */
 public class SkillMarkdownWriter {
 
-    /**
-     * The keys of {@code metadata} that are set by the plugin and must not be set in the source {@code SKILL.md}.
-     */
-    public static final List<String> MANAGED_METADATA = List.of("namespace", "version");
+    public static final String NAMESPACE = "namespace";
+    public static final String VERSION = "version";
 
-    private static final String METADATA = "metadata";
+    /**
+     * The top level fields of the frontmatter that are set by the plugin and must not be set in the source
+     * {@code SKILL.md}.
+     */
+    public static final List<String> MANAGED_FIELDS = List.of(NAMESPACE, VERSION);
     private static final byte[] DELIMITER_LINE = "---\n".getBytes(StandardCharsets.UTF_8);
 
     /**
@@ -28,10 +30,8 @@ public class SkillMarkdownWriter {
      */
     public byte[] write(SkillMarkdown markdown, SkillCard skillCard) {
         ObjectNode frontmatter = (ObjectNode) Yaml.READER.readTree(markdown.frontmatterYaml());
-        JsonNode existing = frontmatter.get(METADATA);
-        ObjectNode metadata = existing instanceof ObjectNode object ? object : frontmatter.putObject(METADATA);
-        metadata.put("namespace", skillCard.metadata().namespace());
-        metadata.put("version", skillCard.metadata().version());
+        frontmatter.put(NAMESPACE, skillCard.metadata().namespace());
+        frontmatter.put(VERSION, skillCard.metadata().version());
 
         ByteArrayOutputStream content = new ByteArrayOutputStream();
         content.writeBytes(DELIMITER_LINE);

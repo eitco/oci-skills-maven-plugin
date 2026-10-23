@@ -69,9 +69,8 @@ def expectedSkillMd = [
 name: first
 description: "Builds things: fast"
 license: MIT
-metadata:
-  namespace: cicd
-  version: 2.3.0-SNAPSHOT
+namespace: cicd
+version: 2.3.0-SNAPSHOT
 ---
 
 # First
@@ -79,9 +78,8 @@ metadata:
         second: """---
 name: second
 description: Second skill
-metadata:
-  namespace: cicd
-  version: 2.3.0-SNAPSHOT
+namespace: cicd
+version: 2.3.0-SNAPSHOT
 ---
 
 # Second

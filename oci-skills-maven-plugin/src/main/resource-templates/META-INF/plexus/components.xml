@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    the packaging "skill": filtered by the resource-templates execution of the parent, so the goals of this plugin are
+    referenced in exactly the version of the plugin
+-->
+<component-set>
+    <components>
+        <component>
+            <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
+            <role-hint>skill</role-hint>
+            <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
+            <configuration>
+                <lifecycles>
+                    <lifecycle>
+                        <id>default</id>
+                        <phases>
+                            <test>${project.groupId}:${project.artifactId}:${project.version}:test</test>
+                            <package>${project.groupId}:${project.artifactId}:${project.version}:build</package>
+                            <verify>${project.groupId}:${project.artifactId}:${project.version}:archive</verify>
+                            <install>org.apache.maven.plugins:maven-install-plugin:${maven.install.plugin.version}:install</install>
+                            <deploy>
+                                ${project.groupId}:${project.artifactId}:${project.version}:push,
+                                org.apache.maven.plugins:maven-deploy-plugin:${maven.deploy.plugin.version}:deploy
+                            </deploy>
+                        </phases>
+                    </lifecycle>
+                </lifecycles>
+            </configuration>
+        </component>
+        <component>
+            <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
+            <role-hint>skill</role-hint>
+            <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
+            <configuration>
+                <type>skill</type>
+                <extension>tar</extension>
+                <packaging>skill</packaging>
+                <language>none</language>
+                <addedToClasspath>false</addedToClasspath>
+            </configuration>
+        </component>
+    </components>
+</component-set>

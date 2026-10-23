@@ -33,7 +33,7 @@ public class SkillBuildMojo extends AbstractSkillContentMojo {
     /**
      * The directory the generated files are written to - one subdirectory per skill, named like the skill directory,
      * containing the generated {@code skill.yaml} and the {@code SKILL.md} with {@code namespace} and {@code version}
-     * added to the {@code metadata} of its frontmatter. Both are put into the image instead of the source files.
+     * added to its frontmatter. Both are put into the image instead of the source files.
      */
     @Parameter(property = "skill.generatedSkillsDirectory",
             defaultValue = "${project.build.directory}/generated-skills", required = true)

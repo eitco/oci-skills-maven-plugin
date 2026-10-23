@@ -197,26 +197,24 @@ spec:
   prompt: SKILL.md
 ```
 
-The packaged `SKILL.md` shows the managed values as well - in `metadata` of the frontmatter, as intended by the agent
-skills format:
+The packaged `SKILL.md` shows the managed values as well - as top level fields of the frontmatter:
 
 ```markdown
 ---
 name: nexus-test
 description: Test skill for OCI registry
-metadata:
-  namespace: cicd
-  version: 0.0.1
+namespace: cicd
+version: 0.0.1
 ---
 
 # Nexus Test
 ...
 ```
 
-Other frontmatter fields and `metadata` entries are kept in their order, everything after the closing `---` is kept
-byte by byte. The frontmatter is written anew, so comments in it are not kept. `metadata.namespace` and
-`metadata.version` must not be set in the source `SKILL.md`. A `status` in the frontmatter is kept like any other
-field.
+The managed fields are appended, other frontmatter fields - including `metadata` - are kept in their order,
+everything after the closing `---` is kept byte by byte. The frontmatter is written anew, so comments in it are not
+kept. `namespace` and `version` must not be set in the source `SKILL.md`; entries of `metadata` with these names are
+the author's own and kept unchanged. A `status` in the frontmatter is kept like any other field.
 
 ### Pushing only in designated builds
 

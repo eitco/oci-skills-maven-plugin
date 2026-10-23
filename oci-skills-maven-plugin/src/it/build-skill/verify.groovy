@@ -85,9 +85,8 @@ assert contents["SKILL.md"] == skillMd.text
 assert skillMd.text == """---
 name: nexus-test
 description: Test skill for OCI registry
-metadata:
-  namespace: cicd
-  version: 1.0.0
+namespace: cicd
+version: 1.0.0
 ---
 
 # Nexus Test

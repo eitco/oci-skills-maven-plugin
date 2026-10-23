@@ -65,6 +65,22 @@ class SkillFrontmatterReaderTest {
     }
 
     @Test
+    void readsManagedFields() throws Exception {
+        TestSkills.write(skillDirectory, "SKILL.md", """
+                ---
+                name: nexus-test
+                description: Test skill
+                namespace: cicd
+                version: 1.10
+                ---
+                # Nexus Test
+                """);
+
+        assertThat(reader.read(skillDirectory).frontmatter())
+                .isEqualTo(new SkillFrontmatter("nexus-test", "Test skill", Map.of(), null, "cicd", "1.10"));
+    }
+
+    @Test
     void readsMultiLineDescription() throws Exception {
         TestSkills.write(skillDirectory, "SKILL.md", """
                 ---

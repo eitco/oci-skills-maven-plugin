@@ -53,10 +53,11 @@ public class SkillValidator {
             problems.add(FRONTMATTER + "description has " + metadata.description().length()
                     + " characters, at most " + MAX_DESCRIPTION_LENGTH + " are allowed");
         }
-        for (String key : SkillMarkdownWriter.MANAGED_METADATA) {
-            if (frontmatter.metadata().containsKey(key)) {
-                problems.add(FRONTMATTER + "metadata." + key + " is managed by the plugin - remove it and configure <"
-                        + key + "> in the plugin");
+        for (String key : SkillMarkdownWriter.MANAGED_FIELDS) {
+            String value = key.equals(SkillMarkdownWriter.NAMESPACE) ? frontmatter.namespace() : frontmatter.version();
+            if (value != null) {
+                problems.add(FRONTMATTER + key + " is managed by the plugin - remove it and configure <" + key
+                        + "> in the plugin");
             }
         }
         if (frontmatter.status() != null) {

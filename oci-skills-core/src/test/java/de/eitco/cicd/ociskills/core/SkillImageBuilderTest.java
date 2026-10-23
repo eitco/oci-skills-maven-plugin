@@ -131,7 +131,7 @@ class SkillImageBuilderTest {
                 SkillStatus.DRAFT, TIMESTAMP, new SkillCardSettings("eitco", "2.3.0-SNAPSHOT"), generatedDirectory()));
 
         String expected = TestSkills.DEFAULT_SKILL_MD.replace("description: Test skill for OCI registry\n",
-                "description: Test skill for OCI registry\nmetadata:\n  namespace: eitco\n  version: 2.3.0-SNAPSHOT\n");
+                "description: Test skill for OCI registry\nnamespace: eitco\nversion: 2.3.0-SNAPSHOT\n");
         assertThat(generatedDirectory().resolve("SKILL.md")).hasContent(expected);
         assertThat(files(new OciLayoutReader().read(outputDirectory)).get("SKILL.md")).isEqualTo(expected);
         assertThat(skillDirectory.resolve("SKILL.md")).hasContent(TestSkills.DEFAULT_SKILL_MD);
@@ -326,7 +326,7 @@ class SkillImageBuilderTest {
         // intentional difference: the plugin adds the managed values to the frontmatter of SKILL.md
         assertThat(ourFiles.get("SKILL.md")).isEqualTo(skillctlFiles.get("SKILL.md").replace(
                 "description: Test skill for OCI registry\n",
-                "description: Test skill for OCI registry\nmetadata:\n  namespace: cicd\n  version: 0.0.1\n"));
+                "description: Test skill for OCI registry\nnamespace: cicd\nversion: 0.0.1\n"));
     }
 
     private static Map<String, String> files(OciImageLayout layout) throws Exception {
