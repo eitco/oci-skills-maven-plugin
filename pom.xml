@@ -8,6 +8,7 @@
         <version>1.1.1</version>
     </parent>
 
+    <groupId>de.eitco.cicd.ociskills</groupId>
     <artifactId>oci-skills-maven-plugin-parent</artifactId>
     <version>0.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -52,12 +53,12 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>de.eitco.cicd</groupId>
+                <groupId>de.eitco.cicd.ociskills</groupId>
                 <artifactId>oci-skills-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>de.eitco.cicd</groupId>
+                <groupId>de.eitco.cicd.ociskills</groupId>
                 <artifactId>oci-skills-registry-oras</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -130,6 +131,12 @@
                     <configuration>
                         <release>${java.language.version}</release>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <!-- 0.4.0 from eitco-oss-parent breaks under maven 3.10 (maven-metadata-local.xml ends up in the bundle) -->
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.12.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>

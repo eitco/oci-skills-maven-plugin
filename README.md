@@ -31,7 +31,7 @@ The core has no dependency on maven, nexus or ORAS.
 <build>
     <plugins>
         <plugin>
-            <groupId>de.eitco.cicd</groupId>
+            <groupId>de.eitco.cicd.ociskills</groupId>
             <artifactId>oci-skills-maven-plugin</artifactId>
             <version>${oci-skills-maven-plugin.version}</version>
             <extensions>true</extensions>
@@ -126,7 +126,7 @@ The goals can be bound in any project as well:
 <build>
     <plugins>
         <plugin>
-            <groupId>de.eitco.cicd</groupId>
+            <groupId>de.eitco.cicd.ociskills</groupId>
             <artifactId>oci-skills-maven-plugin</artifactId>
             <version>${oci-skills-maven-plugin.version}</version>
             <configuration>
@@ -228,7 +228,7 @@ Without the packaging `skill`, local `mvn package` or `mvn install` calls must n
         <build>
             <plugins>
                 <plugin>
-                    <groupId>de.eitco.cicd</groupId>
+                    <groupId>de.eitco.cicd.ociskills</groupId>
                     <artifactId>oci-skills-maven-plugin</artifactId>
                     <executions>
                         <execution>
