@@ -173,6 +173,70 @@ class SkillImageBuilderTest {
     }
 
     @Test
+    void isPublishedByDefault() throws Exception {
+        SkillBuildResult result = builder.build(request(null));
+
+        assertThat(result.status()).isEqualTo(SkillStatus.PUBLISHED);
+        assertThat(result.tag()).isEqualTo("0.0.1");
+        assertThat(new OciLayoutReader().read(outputDirectory).manifest().annotations())
+                .containsEntry("io.skillimage.status", "published");
+    }
+
+    @Test
+    void takesTheStatusFromTheFrontmatter() throws Exception {
+        TestSkills.write(skillDirectory, "SKILL.md", """
+                ---
+                name: nexus-test
+                description: Test skill for OCI registry
+                status: Draft
+                ---
+                # Nexus Test
+                """);
+
+        SkillBuildResult result = builder.build(request(null));
+
+        assertThat(result.status()).isEqualTo(SkillStatus.DRAFT);
+        assertThat(result.tag()).isEqualTo("0.0.1-draft");
+        assertThat(new OciLayoutReader().read(outputDirectory).manifest().annotations())
+                .containsEntry("io.skillimage.status", "draft");
+        assertThat(Files.readString(generatedDirectory().resolve("SKILL.md"))).contains("status: Draft");
+    }
+
+    @Test
+    void anExplicitStatusWinsOverTheFrontmatter() throws Exception {
+        TestSkills.write(skillDirectory, "SKILL.md", """
+                ---
+                name: nexus-test
+                description: Test skill for OCI registry
+                status: draft
+                ---
+                # Nexus Test
+                """);
+
+        SkillBuildResult result = builder.build(request(SkillStatus.TESTING));
+
+        assertThat(result.status()).isEqualTo(SkillStatus.TESTING);
+        assertThat(result.tag()).isEqualTo("0.0.1-testing");
+    }
+
+    @Test
+    void rejectsAnUnsupportedStatus() throws Exception {
+        TestSkills.write(skillDirectory, "SKILL.md", """
+                ---
+                name: nexus-test
+                description: Test skill for OCI registry
+                status: released
+                ---
+                # Nexus Test
+                """);
+
+        assertThatThrownBy(() -> builder.build(request(null)))
+                .isInstanceOf(SkillValidationException.class)
+                .hasMessageContaining("status 'released' is not supported");
+        assertThat(outputDirectory).doesNotExist();
+    }
+
+    @Test
     void sameLayerForDifferentStatus() throws Exception {
         SkillBuildResult draft = builder.build(request(SkillStatus.DRAFT));
         SkillBuildResult published = builder.build(request(SkillStatus.PUBLISHED));

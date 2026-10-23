@@ -6,6 +6,7 @@ package de.eitco.cicd.ociskills.core;
 public enum Phase {
     VALIDATION("validation"),
     BUILD("build"),
+    TEST("test"),
     PUSH("push");
 
     private final String displayName;

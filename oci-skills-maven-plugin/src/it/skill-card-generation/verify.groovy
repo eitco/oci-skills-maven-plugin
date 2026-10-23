@@ -55,7 +55,7 @@ expected.each { skill, skillYaml ->
     def built = image(skill)
     assert new File(basedir, "target/generated-skills/" + skill + "/skill.yaml").text == skillYaml
     assert built.skillYaml == skillYaml
-    assert built.tag == "2.3.0-SNAPSHOT-draft"
+    assert built.tag == "2.3.0-SNAPSHOT"
     assert built.annotations["org.opencontainers.image.title"] == skill
     assert built.annotations["org.opencontainers.image.vendor"] == "cicd"
     assert built.annotations["org.opencontainers.image.version"] == "2.3.0-SNAPSHOT"

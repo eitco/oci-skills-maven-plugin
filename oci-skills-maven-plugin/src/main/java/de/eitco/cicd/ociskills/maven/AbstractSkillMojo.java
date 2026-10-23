@@ -10,13 +10,13 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * The common configuration of the skill goals: where the skills are and where their OCI image layouts are written.
+ * The common configuration of the skill goals: where the skills, their tests and their OCI image layouts are.
  */
 abstract class AbstractSkillMojo extends AbstractMojo {
 
     /**
      * The directory containing the skills. Every direct subdirectory that is not hidden is a skill directory with
-     * {@code skill.yaml} and the prompt file.
+     * {@code SKILL.md} and further files.
      */
     @Parameter(property = "skill.skillsDirectory", defaultValue = "${project.basedir}/src/main/skills",
             required = true)
@@ -31,6 +31,14 @@ abstract class AbstractSkillMojo extends AbstractMojo {
     private File outputDirectory;
 
     /**
+     * The directory containing the tests of the skills - one subdirectory per skill, named like the skill directory,
+     * with {@code tests.yaml}.
+     */
+    @Parameter(property = "skill.testsDirectory", defaultValue = "${project.basedir}/src/test/skills",
+            required = true)
+    private File skillTestsDirectory;
+
+    /**
      * @return the skill directories, sorted by name
      * @throws MojoFailureException if there are no skills
      */
@@ -39,9 +47,27 @@ abstract class AbstractSkillMojo extends AbstractMojo {
     }
 
     /**
+     * @return the directory containing the OCI image layouts of all skills
+     */
+    protected Path outputDirectory() {
+        return outputDirectory.toPath();
+    }
+
+    /**
      * @return the directory of the OCI image layout of the given skill
      */
     protected Path outputDirectory(Path skill) {
-        return outputDirectory.toPath().resolve(skill.getFileName().toString());
+        return outputDirectory().resolve(name(skill));
+    }
+
+    /**
+     * @return the directory with {@code tests.yaml} of the given skill
+     */
+    protected Path testDirectory(Path skill) {
+        return skillTestsDirectory.toPath().resolve(name(skill));
+    }
+
+    protected static String name(Path skill) {
+        return skill.getFileName().toString();
     }
 }

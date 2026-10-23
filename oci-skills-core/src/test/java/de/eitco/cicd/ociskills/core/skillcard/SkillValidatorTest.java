@@ -61,6 +61,23 @@ class SkillValidatorTest {
         return catchThrowableOfType(SkillValidationException.class, () -> validate(skill, directory));
     }
 
+    private static Skill withStatus(String status) {
+        return new Skill(new SkillFrontmatter("nexus-test", "desc", Map.of(), status),
+                new SkillCardSettings("cicd", "0.0.1"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"draft", "testing", "published", "Published"})
+    void acceptsSupportedStatus(String status) {
+        assertThatCode(() -> validate(withStatus(status), skillDirectory)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsUnsupportedStatus() {
+        assertThat(validationErrorFor(withStatus("released")).problems()).containsExactly(
+                "SKILL.md frontmatter: status 'released' is not supported, supported: draft, testing, published");
+    }
+
     @Test
     void acceptsValidSkillCard() {
         assertThatCode(() -> validate(validSkill(), skillDirectory)).doesNotThrowAnyException();

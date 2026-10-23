@@ -12,7 +12,7 @@ assert output.list().sort() == ["alpha", "beta"]
 }
 
 String log = new File(basedir, "build.log").text
-assert log.contains("cicd/alpha:1.0.0-draft")
-assert log.contains("cicd/beta:1.0.0-draft")
+assert log.contains("cicd/alpha:1.0.0 (published)")
+assert log.contains("cicd/beta:1.0.0 (published)")
 assert log.contains("Built 2 skill images")
 assert !log.contains("cicd/ignored")

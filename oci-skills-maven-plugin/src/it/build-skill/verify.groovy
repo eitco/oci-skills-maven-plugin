@@ -13,7 +13,7 @@ assert json.parse(new File(layout, "oci-layout")).imageLayoutVersion == "1.0.0"
 
 def index = json.parse(new File(layout, "index.json"))
 assert index.manifests.size() == 1
-assert index.manifests[0].annotations["org.opencontainers.image.ref.name"] == "1.0.0-draft"
+assert index.manifests[0].annotations["org.opencontainers.image.ref.name"] == "1.0.0"
 assert blobs.listFiles().length == 3
 
 def sha256 = { File file -> "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.bytes).encodeHex().toString() }
@@ -30,7 +30,7 @@ Instant created = Instant.parse(manifest.annotations["org.opencontainers.image.c
 assert Duration.between(created, Instant.now()) < Duration.ofMinutes(10)
 assert !created.isAfter(Instant.now())
 assert manifest.annotations.findAll { it.key != "org.opencontainers.image.created" } == [
-        "io.skillimage.status"                : "draft",
+        "io.skillimage.status"                : "published",
         "io.skillimage.wordcount"             : "11",
         "org.opencontainers.image.description": "Test skill for OCI registry",
         "org.opencontainers.image.title"      : "nexus-test",
@@ -102,7 +102,7 @@ assert config.os == "linux"
 assert config.rootfs.diff_ids.size() == 1
 
 String log = new File(basedir, "build.log").text
-assert log.contains("nexus-test:1.0.0-draft")
+assert log.contains("nexus-test:1.0.0 (published)")
 assert log.contains(index.manifests[0].digest)
 // push is bound to deploy and must not run in a package build
 assert !log.contains("oci-skills:push") && !log.contains("push-skill-image")

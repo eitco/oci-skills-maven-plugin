@@ -50,6 +50,21 @@ class SkillFrontmatterReaderTest {
     }
 
     @Test
+    void readsStatus() throws Exception {
+        TestSkills.write(skillDirectory, "SKILL.md", """
+                ---
+                name: nexus-test
+                description: Test skill
+                status: draft
+                ---
+                # Nexus Test
+                """);
+
+        assertThat(reader.read(skillDirectory).frontmatter())
+                .isEqualTo(new SkillFrontmatter("nexus-test", "Test skill", Map.of(), "draft"));
+    }
+
+    @Test
     void readsMultiLineDescription() throws Exception {
         TestSkills.write(skillDirectory, "SKILL.md", """
                 ---

@@ -15,6 +15,7 @@ import de.eitco.cicd.ociskills.core.oci.MediaTypes;
 import de.eitco.cicd.ociskills.core.oci.OciImageManifest;
 import de.eitco.cicd.ociskills.core.oci.OciJson;
 import de.eitco.cicd.ociskills.core.oci.SerializedBlob;
+import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 import de.eitco.cicd.ociskills.core.oci.TagStrategy;
 import de.eitco.cicd.ociskills.core.oci.WordCounter;
 import de.eitco.cicd.ociskills.core.skillcard.SkillCard;
@@ -77,7 +78,10 @@ public class SkillImageBuilder {
         List<SkillFile> files = new ArrayList<>(new SkillFileCollector(excludingOutput(request.fileSelection(),
                 skillDirectory, outputDirectory)).collect(skillDirectory));
         int wordCount = WordCounter.countWords(readPrompt(skillDirectory.resolve(SkillCard.PROMPT_FILE)));
-        String tag = tagStrategy.tag(skillCard.metadata().version(), request.status());
+        SkillStatus status = request.status() != null ? request.status()
+                : markdown.frontmatter().status() != null ? SkillStatus.parse(markdown.frontmatter().status())
+                : SkillStatus.PUBLISHED;
+        String tag = tagStrategy.tag(skillCard.metadata().version(), status);
 
         Path generatedDirectory = request.generatedDirectory().toAbsolutePath().normalize();
         Path skillCardFile = writeGenerated(generatedDirectory.resolve(SkillCard.FILE_NAME),
@@ -100,14 +104,14 @@ public class SkillImageBuilder {
         writer.writeBlob(config.bytes(), config.descriptor().digest());
 
         OciImageManifest manifest = imageManifestBuilder.build(config.descriptor(), layer.descriptor(), skillCard,
-                request.status(), wordCount, request.timestamp());
+                status, wordCount, request.timestamp());
         SerializedBlob manifestBlob = OciJson.serializeBlob(manifest, MediaTypes.IMAGE_MANIFEST);
         writer.writeBlob(manifestBlob.bytes(), manifestBlob.descriptor().digest());
         writer.writeIndex(manifestBlob.descriptor(), tag);
 
         verify(outputDirectory, manifestBlob, tag);
 
-        return new SkillBuildResult(outputDirectory, skillCard, tag, manifestBlob.descriptor(), config.descriptor(),
+        return new SkillBuildResult(outputDirectory, skillCard, status, tag, manifestBlob.descriptor(), config.descriptor(),
                 layer.descriptor(), layer.diffId());
     }
 

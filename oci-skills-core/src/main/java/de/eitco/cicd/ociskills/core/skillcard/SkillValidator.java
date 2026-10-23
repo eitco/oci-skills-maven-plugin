@@ -1,6 +1,7 @@
 package de.eitco.cicd.ociskills.core.skillcard;
 
 import de.eitco.cicd.ociskills.core.SkillValidationException;
+import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,6 +57,13 @@ public class SkillValidator {
             if (frontmatter.metadata().containsKey(key)) {
                 problems.add(FRONTMATTER + "metadata." + key + " is managed by the plugin - remove it and configure <"
                         + key + "> in the plugin");
+            }
+        }
+        if (frontmatter.status() != null) {
+            try {
+                SkillStatus.parse(frontmatter.status());
+            } catch (IllegalArgumentException e) {
+                problems.add(FRONTMATTER + e.getMessage());
             }
         }
         validateDnsLabel("namespace", metadata.namespace(), problems);
