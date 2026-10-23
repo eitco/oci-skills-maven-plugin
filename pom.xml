@@ -10,7 +10,7 @@
 
     <groupId>de.eitco.cicd.ociskills</groupId>
     <artifactId>oci-skills-maven-plugin-parent</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>oci skills maven plugin parent</name>
@@ -30,7 +30,7 @@
         <url>https://github.com/eitco/oci-skills-maven-plugin.git</url>
         <connection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</connection>
         <developerConnection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</developerConnection>
-        <tag>0.0.2</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
