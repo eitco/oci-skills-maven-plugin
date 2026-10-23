@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>oci-skills-maven-plugin-parent</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>oci skills maven plugin parent</name>
@@ -29,7 +29,7 @@
         <url>https://github.com/eitco/oci-skills-maven-plugin.git</url>
         <connection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</connection>
         <developerConnection>scm:git:https://github.com/eitco/oci-skills-maven-plugin.git</developerConnection>
-        <tag>0.0.1</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
