@@ -15,8 +15,8 @@ src/main/skills/<skill>/  --oci-skills:build-->  target/skill-oci/<skill>/ (OCI 
 
 | module                      | content                                                                    |
 |-----------------------------|----------------------------------------------------------------------------|
-| `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout  |
-| `oci-skills-registry-oras`  | `OciRegistryClient` implementation based on the ORAS java SDK              |
+| `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout, installing skills and the lock file |
+| `oci-skills-registry-oras`  | `OciRegistryClient` implementation based on the ORAS java SDK - push and pull |
 | `oci-skills-maven-plugin`   | the goals and the lifecycle of the packaging `skill`                       |
 
 The core has no dependency on maven, nexus or ORAS.
@@ -57,7 +57,9 @@ The core has no dependency on maven, nexus or ORAS.
 | `deploy`           | `oci-skills:push`, then `maven-deploy-plugin:deploy`                   |
 
 `oci-skills:archive` packs the OCI image layouts of all skills into `target/<finalName>.tar`, the main artifact of the
-project - so `install` and `deploy` put the skills into maven repositories as well (type `skill`). Local `mvn install`
+project - so `install` and `deploy` put the skills into maven repositories as well (type `skill`). Every skill is
+attached on its own as well (type `tar`), so it can be [installed](#installing-skills) by other projects - its
+classifier is the skill name, suffixed like the tag, e.g. `nexus-test` or `nexus-test-draft`. Local `mvn install`
 calls never push, since the push is bound to `deploy`. `-Dskill.push.skip=true` skips the push in any case.
 
 ### Status
@@ -265,6 +267,94 @@ Credentials are never configured in the POM. They are taken from the `<server>` 
 
 Without `registryServerId` the push is anonymous.
 
+### Installing skills
+
+Projects using skills do not need to commit them - `oci-skills:sync` installs them from maven repositories or OCI
+registries into `.claude/skills`:
+
+```xml
+<plugin>
+    <groupId>de.eitco.cicd.ociskills</groupId>
+    <artifactId>oci-skills-maven-plugin</artifactId>
+    <version>${oci-skills-maven-plugin.version}</version>
+    <configuration>
+        <sources>
+            <source>
+                <id>eitco-maven</id>
+                <type>maven</type>
+                <groupId>de.eitco.{namespace}</groupId>
+                <artifactId>{namespace}-skills</artifactId>
+            </source>
+            <source>
+                <id>eitco-oci</id>
+                <type>oci</type>
+                <registry>nexus.eitco.de</registry>
+                <repository>docker-cicd-prerelease/eitco/{namespace}</repository>
+                <registryServerId>eitco-oci</registryServerId>
+            </source>
+        </sources>
+        <skills>
+            <skill>
+                <id>cicd/nexus-test</id>
+                <version>[1.0,2.0)</version>
+            </skill>
+            <skill>
+                <id>cicd/release-notes</id>
+                <version>2.1.0</version>
+                <status>testing</status>
+            </skill>
+        </skills>
+    </configuration>
+    <executions>
+        <execution>
+            <goals>
+                <goal>sync</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+```
+
+A skill is identified by `<namespace>/<name>` of its SkillCard, independent of where it is stored. Every source maps
+it to its own coordinates - `{namespace}` and `{name}` are replaced in `groupId`, `artifactId` and `repository`:
+
+| `type`  | the skill is                                                             | as created by        |
+|---------|--------------------------------------------------------------------------|----------------------|
+| `maven` | the artifact `<groupId>:<artifactId>:tar:<name>[-<status>]:<version>`    | `oci-skills:archive` |
+| `oci`   | the image `<registry>/<repository>/<name>:<version>[-<status>]`          | `oci-skills:push`    |
+
+Maven sources use the repositories, mirrors and credentials of the build, including the local repository and the
+reactor. OCI sources take their credentials from the `<server>` with the id `registryServerId`.
+
+**Resolving.** `version` is a maven version range or an exact version - unlike maven, `1.2.0` matches only `1.2.0`.
+`status` is the least mature status accepted, default `published`. The sources are asked in their order, the first
+source knowing a matching version wins, `<source>` in a `<skill>` asks that source only. The highest matching version
+with an accepted status is taken - if a version has several statuses, the most mature one.
+
+**Lock file.** The resolved version and the digest of the image are written to `skills.lock.yaml` next to the POM.
+Commit it: as long as the request of a skill does not change, `sync` installs exactly the locked image - newer versions
+are only taken by `mvn oci-skills:update` (all skills) or `mvn oci-skills:update -Dskill=nexus-test`. A locked image
+may come from any source, e.g. from the maven repository though it was resolved from the registry - the artifact and
+the image of the same build have the same digest. A source delivering another digest fails the build.
+
+**Installed skills.** Every skill is installed into `.claude/skills/<name>/` and marked with `.oci-skill.json`. Only
+marked directories are replaced or removed, so skills written by hand can live in the same directory - a requested
+skill with the name of such a directory fails the build. Installed skills are up to date if their digest is the locked
+one - `sync` does not even access the sources then. Skills of the lock file that are no longer requested are removed.
+`.claude/skills/.gitignore` lists the installed skills in a managed block, other lines are kept.
+
+`sync` is not bound by any lifecycle, its default phase is `initialize` - add an execution as shown above to run it
+with every build. A single skill can be installed from the command line without lock file - `sync` keeps it:
+
+```shell
+mvn oci-skills:pull -Dskill=cicd/nexus-test             # highest version from the configured sources
+mvn oci-skills:pull -Dskill=cicd/nexus-test:1.2.0
+mvn oci-skills:pull -Dskill.artifact=de.eitco.cicd:cicd-skills:1.2.0:nexus-test
+mvn oci-skills:pull -Dskill.image=nexus.eitco.de/docker-cicd-prerelease/eitco/cicd/nexus-test:1.2.0
+```
+
+`-Dskill.artifact` and `-Dskill.image` work without project.
+
 ## Goals
 
 ### `oci-skills:build` (default phase `package`)
@@ -316,7 +406,41 @@ Additional CAs are trusted in addition to the JVM defaults. TLS verification can
 |---------------|----------------------|------------------------------------------------------|-----------------------------------|
 | `archiveFile` | `skill.archive.file` | `${project.build.directory}/${project.build.finalName}.tar` | the tar file of all image layouts |
 
-Without packaging `skill` the tar file is attached with classifier `skills`.
+Without packaging `skill` the tar file is attached with classifier `skills`. Every skill is attached with classifier
+`<name>` - suffixed with `-draft` or `-testing` unless its status is `published`.
+
+### `oci-skills:sync` (default phase `initialize`, not bound)
+
+| parameter          | property                 | default                                    | description                                          |
+|--------------------|--------------------------|--------------------------------------------|------------------------------------------------------|
+| `sources`          |                          |                                            | the sources to pull from, see [Installing skills](#installing-skills) |
+| `skills`           |                          |                                            | the skills to install: `id`, `version`, `status`, `source` |
+| `installDirectory` | `skill.installDirectory` | `${project.basedir}/.claude/skills`        | the skills are installed into `<dir>/<name>`         |
+| `lockFile`         | `skill.lockFile`         | `${project.basedir}/skills.lock.yaml`      | the lock file                                        |
+| `skip`             | `skill.sync.skip`        | `false`                                    | skip installing skills                               |
+
+A `<source>` has an `id`, a `type` (`maven` or `oci`) and `groupId` and `artifactId` (`maven`) or `registry`,
+`repository`, `registryServerId`, `caCertificates` and `allowPlainHttp` (`oci`).
+
+### `oci-skills:update`
+
+Like `oci-skills:sync`, but resolves the skills again even if they are locked. `-Dskill=<ids or names>` - comma
+separated - restricts this to the given skills.
+
+### `oci-skills:pull`
+
+| parameter          | property                    | default     | description                                                    |
+|--------------------|-----------------------------|-------------|----------------------------------------------------------------|
+| `skill`            | `skill`                     |             | `<namespace>/<name>[:<version>]`, resolved from the `sources`  |
+| `status`           | `skill.status`              | `published` | with `skill`: the least mature status accepted                 |
+| `source`           | `skill.source`              |             | with `skill`: the only source to ask                           |
+| `artifact`         | `skill.artifact`            |             | `<groupId>:<artifactId>:<version>:<classifier>`                |
+| `image`            | `skill.image`               |             | `<registry>/<repository>:<tag>` or `<registry>/<repository>@<digest>` |
+| `registryServerId` | `skill.registryServerId`    |             | with `image`: id of the `<server>` in `settings.xml`           |
+| `allowPlainHttp`   | `skill.pull.allowPlainHttp` | `false`     | with `image`: connect without TLS - for local test registries only |
+
+`sources` and `installDirectory` are the same as for `oci-skills:sync`. Exactly one of `skill`, `artifact` and
+`image` must be set.
 
 ## Image format
 

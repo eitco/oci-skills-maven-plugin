@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.eitco.cicd.it</groupId>
+        <artifactId>sync-from-maven</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>cicd-skills</artifactId>
+    <version>${revision}</version>
+    <packaging>skill</packaging>
+
+    <properties>
+        <revision>1.0.0</revision>
+    </properties>
+
+    <distributionManagement>
+        <repository>
+            <id>it-skills</id>
+            <url>file://${project.basedir}/../target/skill-repository</url>
+        </repository>
+    </distributionManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>de.eitco.cicd.ociskills</groupId>
+                <artifactId>oci-skills-maven-plugin</artifactId>
+                <version>${it.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <registry>localhost:5000</registry>
+                    <repository>skills</repository>
+                    <namespace>cicd</namespace>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

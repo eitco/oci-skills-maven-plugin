@@ -7,7 +7,8 @@ public enum Phase {
     VALIDATION("validation"),
     BUILD("build"),
     TEST("test"),
-    PUSH("push");
+    PUSH("push"),
+    PULL("pull");
 
     private final String displayName;
 

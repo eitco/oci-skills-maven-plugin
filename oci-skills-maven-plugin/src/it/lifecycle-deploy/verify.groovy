@@ -16,3 +16,4 @@ int push = log.indexOf(":push (default-push)")
 int deploy = log.indexOf("--- deploy:")
 assert push >= 0 && deploy > push
 assert log.contains("skill.push.skip is set - skipping push")
+assert new File(basedir, "target/deployment/de/eitco/cicd/it/lifecycle-deploy/1.0.0/lifecycle-deploy-1.0.0-nexus-test.tar").isFile()

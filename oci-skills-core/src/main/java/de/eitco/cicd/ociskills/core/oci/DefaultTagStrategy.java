@@ -8,9 +8,6 @@ public class DefaultTagStrategy implements TagStrategy {
 
     @Override
     public String tag(String version, SkillStatus status) {
-        return switch (status) {
-            case DRAFT, TESTING -> version + "-" + status.value();
-            case PUBLISHED -> version;
-        };
+        return StatusSuffix.append(version, status);
     }
 }

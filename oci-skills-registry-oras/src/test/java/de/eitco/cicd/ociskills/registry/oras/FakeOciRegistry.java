@@ -28,13 +28,14 @@ import java.util.regex.Pattern;
 
 /**
  * A minimal in-memory OCI distribution registry for tests - supporting blob checks, monolithic and two step blob
- * uploads, manifest push/pull, basic authentication and injected errors.
+ * uploads, manifest push/pull, tag lists, basic authentication and injected errors.
  */
 final class FakeOciRegistry implements AutoCloseable {
 
     private static final Pattern BLOB = Pattern.compile("/v2/(.+)/blobs/(sha256:[a-f0-9]{64})");
     private static final Pattern UPLOAD = Pattern.compile("/v2/(.+)/blobs/uploads/([^/]*)");
     private static final Pattern MANIFEST = Pattern.compile("/v2/(.+)/manifests/([^/]+)");
+    private static final Pattern TAGS = Pattern.compile("/v2/(.+)/tags/list");
 
     record Request(String method, String path, String authorization) {
     }
@@ -109,6 +110,13 @@ final class FakeOciRegistry implements AutoCloseable {
         return blobs;
     }
 
+    /**
+     * Stores a manifest under a tag only - unlike a push, it is not reachable by its digest.
+     */
+    void putManifest(String repository, String tag, byte[] content, String contentType) {
+        manifests.put(repository + ":" + tag, new StoredManifest(content, contentType));
+    }
+
     StoredManifest manifest(String repository, String reference) {
         return manifests.get(repository + ":" + reference);
     }
@@ -154,7 +162,10 @@ final class FakeOciRegistry implements AutoCloseable {
             Matcher blob = BLOB.matcher(path);
             Matcher upload = UPLOAD.matcher(path);
             Matcher manifest = MANIFEST.matcher(path);
-            if (blob.matches()) {
+            Matcher tags = TAGS.matcher(path);
+            if (tags.matches()) {
+                handleTags(exchange, tags.group(1));
+            } else if (blob.matches()) {
                 handleBlob(exchange, method, blob.group(2));
             } else if (upload.matches()) {
                 handleUpload(exchange, method, upload.group(1), upload.group(2), body);
@@ -225,6 +236,22 @@ final class FakeOciRegistry implements AutoCloseable {
         String digest = confirmedDigestOverride != null ? confirmedDigestOverride : sha256(stored.content());
         respond(exchange, 200, Map.of("Docker-Content-Digest", digest, "Content-Type", stored.contentType()),
                 method.equals("HEAD") ? null : stored.content(), stored.content().length);
+    }
+
+    private void handleTags(HttpExchange exchange, String repository) throws IOException {
+        List<String> tags = manifests.keySet().stream()
+                .filter(key -> key.startsWith(repository + ":"))
+                .map(key -> key.substring(repository.length() + 1))
+                .filter(reference -> !reference.startsWith("sha256:"))
+                .sorted()
+                .toList();
+        if (tags.isEmpty()) {
+            error(exchange, 404, "NAME_UNKNOWN");
+            return;
+        }
+        String body = "{\"name\":\"" + repository + "\",\"tags\":["
+                + String.join(",", tags.stream().map(tag -> "\"" + tag + "\"").toList()) + "]}";
+        respond(exchange, 200, Map.of("Content-Type", "application/json"), body.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String queryParameter(HttpExchange exchange, String name) {

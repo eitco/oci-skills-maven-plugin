@@ -19,3 +19,9 @@ assert status("beta") == "published"
 assert log.contains("cicd/beta:1.0.0 (published)")
 // the status stays in the packaged SKILL.md
 assert new File(basedir, "target/generated-skills/alpha/SKILL.md").text.contains("status: draft")
+// every skill is attached on its own - the classifier is the skill name, suffixed with a status other than published
+File installed = new File(localRepositoryPath, "de/eitco/cicd/it/status-from-frontmatter/1.0.0")
+assert new File(installed, "status-from-frontmatter-1.0.0-alpha-draft.tar").isFile()
+assert new File(installed, "status-from-frontmatter-1.0.0-beta.tar").isFile()
+assert !new File(installed, "status-from-frontmatter-1.0.0-alpha.tar").exists()
+assert new File(basedir, "target/status-from-frontmatter-1.0.0-beta.tar").isFile()

@@ -8,7 +8,9 @@ import de.eitco.cicd.ociskills.core.oci.Digest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -27,7 +29,23 @@ class SkillPublisherTest {
     }
 
     private static OciRegistryClient confirming(Digest digest) {
-        return (image, destination, credentials) -> new PushResult(destination, digest, List.of(), List.of());
+        return new OciRegistryClient() {
+            @Override
+            public PushResult push(OciImageLayout image, OciReference destination, RegistryCredentials credentials) {
+                return new PushResult(destination, digest, List.of(), List.of());
+            }
+
+            @Override
+            public List<String> tags(OciReference repository, RegistryCredentials credentials) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Optional<OciImageLayout> pull(OciReference source, Digest digest, Path directory,
+                                                 RegistryCredentials credentials) {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Test

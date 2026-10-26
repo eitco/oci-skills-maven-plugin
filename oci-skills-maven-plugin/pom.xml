@@ -53,6 +53,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-invoker-plugin</artifactId>
+                <configuration>
+                    <!-- projects with several invocations, e.g. sync-from-maven, must start from scratch -->
+                    <cloneClean>true</cloneClean>
+                </configuration>
             </plugin>
         </plugins>
     </build>
