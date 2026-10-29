@@ -30,9 +30,10 @@ assert lock.contains("status: draft")
 assert lock.contains("digest: " + alpha.digest)
 assert !lock.contains("gamma")
 
-String gitignore = new File(skills, ".gitignore").text
-assert gitignore.contains("/alpha/\n/beta/\n/gamma/\n")
-assert !gitignore.contains("by-hand")
+// every installed skill ignores itself in git, the install directory and the skill written by hand stay untouched
+["alpha", "beta", "gamma"].each { assert new File(skills, it + "/.gitignore").readLines().contains("*") }
+assert !new File(skills, ".gitignore").exists()
+assert !new File(skills, "by-hand/.gitignore").exists()
 
 // the second sync keeps the locked version, update installs the new version
 int pulled = log.indexOf("Installed cicd/gamma")

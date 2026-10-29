@@ -111,7 +111,6 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
                     : pullImage(workDirectory);
             SkillInstaller installer = new SkillInstaller(installDirectory());
             installer.install(pulled.image(), pulled.origin());
-            installer.writeGitignore();
             getLog().info("Installed " + pulled.origin().id() + " " + pulled.origin().version() + " ("
                     + pulled.origin().status().value() + ") from " + pulled.origin().source() + " into "
                     + installDirectory().resolve(pulled.origin().id().name()));

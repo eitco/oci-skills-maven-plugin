@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +36,7 @@ public class SkillInstaller {
     public static final String ORIGIN_FILE = ".oci-skill.json";
     public static final String GITIGNORE_FILE = ".gitignore";
 
-    static final String GITIGNORE_BEGIN = "# BEGIN managed by oci-skills-maven-plugin";
-    static final String GITIGNORE_END = "# END managed by oci-skills-maven-plugin";
+    static final List<String> GITIGNORE = List.of("# installed by oci-skills-maven-plugin - not checked in", "*");
 
     private static final JsonMapper JSON = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
 
@@ -71,6 +69,7 @@ public class SkillInstaller {
 
     /**
      * Extracts the layer of the image into the directory of the skill, replacing a previously installed version.
+     * The directory contains a {@value #GITIGNORE_FILE} ignoring it in git.
      *
      * @throws SkillPullException if the image is not the skill of the origin or the directory exists, but is not
      *                            installed by the plugin
@@ -103,6 +102,7 @@ public class SkillInstaller {
                 new TarExtractor().extract(layer, staging);
             }
             writeOrigin(staging.resolve(ORIGIN_FILE), origin);
+            Files.write(staging.resolve(GITIGNORE_FILE), GITIGNORE);
             delete(target);
             Files.move(staging, target);
         } catch (IOException e) {
@@ -131,37 +131,6 @@ public class SkillInstaller {
             delete(target);
         } catch (IOException e) {
             throw new SkillPullException("removing " + target + " failed: " + e, e);
-        }
-    }
-
-    /**
-     * Lists the installed skills in a managed block of {@value #GITIGNORE_FILE}. Other lines are kept.
-     */
-    public void writeGitignore() throws SkillPullException {
-        Path gitignore = directory.resolve(GITIGNORE_FILE);
-        try {
-            List<String> lines = new ArrayList<>();
-            if (Files.isRegularFile(gitignore)) {
-                boolean managed = false;
-                for (String line : Files.readAllLines(gitignore)) {
-                    if (line.equals(GITIGNORE_BEGIN)) {
-                        managed = true;
-                    } else if (line.equals(GITIGNORE_END)) {
-                        managed = false;
-                    } else if (!managed) {
-                        lines.add(line);
-                    }
-                }
-            }
-            lines.add(GITIGNORE_BEGIN);
-            for (String name : installed().keySet()) {
-                lines.add("/" + name + "/");
-            }
-            lines.add(GITIGNORE_END);
-            Files.createDirectories(directory);
-            Files.write(gitignore, lines);
-        } catch (IOException e) {
-            throw new SkillPullException("writing " + gitignore + " failed: " + e, e);
         }
     }
 

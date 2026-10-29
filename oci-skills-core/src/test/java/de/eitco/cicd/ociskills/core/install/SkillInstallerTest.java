@@ -115,34 +115,18 @@ class SkillInstallerTest {
     }
 
     @Test
-    void listsInstalledSkillsInAManagedBlockOfGitignore() throws Exception {
+    void ignoresInstalledSkillsInGitByTheirOwnGitignore() throws Exception {
         TestSkills.write(skills(), ".gitignore", "local-only/\n");
-        TestSkills.write(skills(), "by-hand/SKILL.md", "by hand");
+        OciImageLayout image = image("nexus-test", "1.0.0", Map.of(".gitignore", "!SKILL.md\n"));
         SkillInstaller installer = new SkillInstaller(skills());
-        for (String name : new String[]{"beta", "alpha"}) {
-            OciImageLayout image = image(name, "1.0.0", Map.of());
-            installer.install(image, origin(image, name, "1.0.0"));
-        }
 
-        installer.writeGitignore();
+        installer.install(image, origin(image, "nexus-test", "1.0.0"));
 
-        assertThat(skills().resolve(".gitignore")).hasContent("""
-                local-only/
-                # BEGIN managed by oci-skills-maven-plugin
-                /alpha/
-                /beta/
-                # END managed by oci-skills-maven-plugin
+        assertThat(skills().resolve("nexus-test/.gitignore")).hasContent("""
+                # installed by oci-skills-maven-plugin - not checked in
+                *
                 """);
-
-        installer.remove("beta");
-        installer.writeGitignore();
-
-        assertThat(skills().resolve(".gitignore")).hasContent("""
-                local-only/
-                # BEGIN managed by oci-skills-maven-plugin
-                /alpha/
-                # END managed by oci-skills-maven-plugin
-                """);
+        assertThat(skills().resolve(".gitignore")).hasContent("local-only/\n");
     }
 
     @Test

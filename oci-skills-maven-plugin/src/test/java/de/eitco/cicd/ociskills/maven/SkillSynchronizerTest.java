@@ -69,7 +69,7 @@ class SkillSynchronizerTest {
                 "maven");
         assertThat(installer().installed()).containsEntry("nexus-test", origin);
         assertThat(lockFile().read()).containsExactly(new LockedSkill("[1.0,2.0)", PUBLISHED, origin));
-        assertThat(skills().resolve(".gitignore")).content().contains("/nexus-test/");
+        assertThat(skills().resolve("nexus-test/.gitignore")).content().contains("*");
         assertThat(log).anySatisfy(line -> assertThat(line).contains("cicd/nexus-test", "1.1.0", "maven"));
     }
 
@@ -140,7 +140,6 @@ class SkillSynchronizerTest {
         assertThat(skills().resolve("alpha")).doesNotExist();
         assertThat(skills().resolve("by-hand")).isDirectory();
         assertThat(lockFile().read()).extracting(LockedSkill::id).containsExactly(NEXUS_TEST);
-        assertThat(skills().resolve(".gitignore")).content().doesNotContain("/alpha/");
     }
 
     @Test
@@ -153,7 +152,8 @@ class SkillSynchronizerTest {
         sync(NONE, NEXUS_TEST_1);
 
         assertThat(installer().installed()).containsOnlyKeys("nexus-test", "pulled");
-        assertThat(skills().resolve(".gitignore")).content().contains("/pulled/", "/nexus-test/");
+        assertThat(skills().resolve("pulled/.gitignore")).exists();
+        assertThat(skills().resolve("nexus-test/.gitignore")).exists();
     }
 
     @Test

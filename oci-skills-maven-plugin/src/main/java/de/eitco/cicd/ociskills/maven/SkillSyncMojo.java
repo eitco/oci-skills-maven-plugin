@@ -14,8 +14,8 @@ import java.util.function.Predicate;
  * Installs the requested {@code skills} into {@code installDirectory} - in the versions of the lock file. Requests
  * that are not locked yet or changed are resolved and locked: the highest matching version of the first source
  * knowing the skill is taken. Locked skills may be fetched from any source, but must have the locked digest.
- * Skills of the lock file that are no longer requested are removed. Installed skills are listed in the
- * {@code .gitignore} of {@code installDirectory}.
+ * Skills of the lock file that are no longer requested are removed. Every installed skill contains a
+ * {@code .gitignore} ignoring it in git.
  * <p>
  * The goal is not bound by any lifecycle - add an execution to run it with every build.
  */

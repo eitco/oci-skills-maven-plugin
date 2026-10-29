@@ -341,7 +341,8 @@ the image of the same build have the same digest. A source delivering another di
 marked directories are replaced or removed, so skills written by hand can live in the same directory - a requested
 skill with the name of such a directory fails the build. Installed skills are up to date if their digest is the locked
 one - `sync` does not even access the sources then. Skills of the lock file that are no longer requested are removed.
-`.claude/skills/.gitignore` lists the installed skills in a managed block, other lines are kept.
+Every installed skill contains a `.gitignore` with `*`, so it is never checked in - `.claude/skills/.gitignore`
+is not touched.
 
 `sync` is not bound by any lifecycle, its default phase is `initialize` - add an execution as shown above to run it
 with every build. A single skill can be installed from the command line without lock file - `sync` keeps it:

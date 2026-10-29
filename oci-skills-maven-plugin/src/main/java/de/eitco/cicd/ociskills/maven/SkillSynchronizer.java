@@ -29,7 +29,7 @@ import java.util.function.Predicate;
  *     <li>skills whose installed digest differs from the locked digest are fetched and installed</li>
  *     <li>installed skills of the lock file that are no longer requested are removed - skills installed
  *     without lock file, e.g. by {@code oci-skills:pull}, are kept</li>
- *     <li>the lock file and the {@code .gitignore} of the install directory are written</li>
+ *     <li>the lock file is written</li>
  * </ol>
  * The work directory is deleted afterwards.
  */
@@ -74,7 +74,6 @@ final class SkillSynchronizer {
                 }
             }
             lockFile.write(lock);
-            installer.writeGitignore();
         } finally {
             delete(workDirectory);
         }
