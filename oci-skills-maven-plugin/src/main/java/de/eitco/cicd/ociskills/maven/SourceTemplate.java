@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 /**
  * A configured value with the placeholders {@code {namespace}} and {@code {name}} - e.g. the group id of a maven
- * source {@code de.eitco.{namespace}}.
+ * source {@code com.example.{namespace}}.
  */
 final class SourceTemplate {
 

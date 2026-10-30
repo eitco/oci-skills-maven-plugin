@@ -32,17 +32,17 @@ abstract class AbstractSkillPullMojo extends AbstractMojo {
      * <pre>{@code
      * <sources>
      *     <source>
-     *         <id>eitco-maven</id>
+     *         <id>my-maven</id>
      *         <type>maven</type>
-     *         <groupId>de.eitco.{namespace}</groupId>
+     *         <groupId>com.example.{namespace}</groupId>
      *         <artifactId>{namespace}-skills</artifactId>
      *     </source>
      *     <source>
-     *         <id>eitco-oci</id>
+     *         <id>my-registry</id>
      *         <type>oci</type>
-     *         <registry>nexus.eitco.de</registry>
-     *         <repository>docker-cicd-prerelease/eitco/{namespace}</repository>
-     *         <registryServerId>eitco-oci</registryServerId>
+     *         <registry>registry.example.com</registry>
+     *         <repository>skills/{namespace}</repository>
+     *         <registryServerId>my-registry</registryServerId>
      *     </source>
      * </sources>
      * }</pre>

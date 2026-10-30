@@ -26,14 +26,14 @@ abstract class AbstractSkillSyncMojo extends AbstractSkillPullMojo {
      * <pre>{@code
      * <skills>
      *     <skill>
-     *         <id>cicd/nexus-test</id>
+     *         <id>acme/nexus-test</id>
      *         <version>[1.0,2.0)</version>
      *     </skill>
      *     <skill>
-     *         <id>cicd/release-notes</id>
+     *         <id>acme/release-notes</id>
      *         <version>2.1.0</version>
      *         <status>testing</status>
-     *         <source>eitco-oci</source>
+     *         <source>my-registry</source>
      *     </skill>
      * </skills>
      * }</pre>

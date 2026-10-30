@@ -29,7 +29,7 @@ public class SkillSourceConfiguration {
     private String type;
 
     /**
-     * {@code maven} only: the group id of the artifact, e.g. {@code de.eitco.{namespace}}.
+     * {@code maven} only: the group id of the artifact, e.g. {@code com.example.{namespace}}.
      */
     private String groupId;
 
@@ -39,13 +39,13 @@ public class SkillSourceConfiguration {
     private String artifactId;
 
     /**
-     * {@code oci} only: the registry host, optionally with port, e.g. {@code nexus.eitco.de}.
+     * {@code oci} only: the registry host, optionally with port, e.g. {@code registry.example.com}.
      */
     private String registry;
 
     /**
      * {@code oci} only: the repository path below which the skill is located, e.g.
-     * {@code docker-cicd-prerelease/eitco/{namespace}}. The skill name is appended.
+     * {@code skills/{namespace}}. The skill name is appended.
      */
     private String repository;
 

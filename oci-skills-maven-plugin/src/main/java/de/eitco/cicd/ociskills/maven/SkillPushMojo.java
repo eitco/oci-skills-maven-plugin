@@ -37,13 +37,13 @@ import java.util.List;
 public class SkillPushMojo extends AbstractSkillMojo {
 
     /**
-     * The registry host, optionally with port, e.g. {@code nexus.eitco.de}.
+     * The registry host, optionally with port, e.g. {@code registry.example.com}.
      */
     @Parameter(property = "skill.registry")
     private String registry;
 
     /**
-     * The repository path below which the skill is pushed, e.g. {@code docker-cicd-prerelease/eitco/cicd}. The skill
+     * The repository path below which the skill is pushed, e.g. {@code skills/acme}. The skill
      * name is appended.
      */
     @Parameter(property = "skill.repository")

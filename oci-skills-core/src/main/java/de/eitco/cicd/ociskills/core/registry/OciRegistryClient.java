@@ -19,7 +19,7 @@ public interface OciRegistryClient {
             throws SkillPushException;
 
     /**
-     * @param repository the repository, e.g. {@code nexus.eitco.de/docker-cicd-prerelease/eitco/cicd/nexus-test} -
+     * @param repository the repository, e.g. {@code registry.example.com/skills/acme/nexus-test} -
      *                   the tag of the reference is ignored
      * @return the tags of the repository - empty if the repository does not exist
      */

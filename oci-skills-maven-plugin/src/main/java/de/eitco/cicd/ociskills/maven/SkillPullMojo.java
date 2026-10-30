@@ -31,9 +31,9 @@ import java.util.stream.Stream;
  * Installs a single skill from the command line - without lock file. Exactly one of {@code skill},
  * {@code artifact} or {@code image} selects the skill:
  * <pre>
- * mvn oci-skills:pull -Dskill=cicd/nexus-test[:version]
- * mvn oci-skills:pull -Dskill.artifact=de.eitco.cicd:cicd-skills:1.2.0:nexus-test
- * mvn oci-skills:pull -Dskill.image=nexus.eitco.de/docker-cicd-prerelease/eitco/cicd/nexus-test:1.2.0
+ * mvn oci-skills:pull -Dskill=acme/nexus-test[:version]
+ * mvn oci-skills:pull -Dskill.artifact=com.example.acme:acme-skills:1.2.0:nexus-test
+ * mvn oci-skills:pull -Dskill.image=registry.example.com/skills/acme/nexus-test:1.2.0
  * </pre>
  * {@code skill} is resolved from the configured {@code sources}, {@code artifact} from the maven repositories of the
  * build. The goal needs no project. Pulled skills are kept by {@code oci-skills:sync}.
