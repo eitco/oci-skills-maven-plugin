@@ -153,6 +153,60 @@ class SkillSynchronizerTest {
     }
 
     @Test
+    void locksTheRequestedLocation() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        OciImageLayout image = location.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+
+        sync(NONE, SkillRequest.located(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, location));
+
+        SkillOrigin origin = new SkillOrigin(NEXUS_TEST, "1.1.0", PUBLISHED, image.manifestDescriptor().digest(),
+                "de.eitco:skills:nexus-test");
+        assertThat(installer().installed()).containsEntry("nexus-test", origin);
+        assertThat(lockFile().read()).containsExactly(new LockedSkill("[1.0,2.0)", PUBLISHED, null,
+                "de.eitco:skills:nexus-test", origin));
+        assertThat(source.repositories()).isEmpty();
+    }
+
+    @Test
+    void installsALockedSkillFromItsLocation() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        location.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+        SkillRequest request = SkillRequest.located(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, location);
+        sync(NONE, request);
+        installer().remove("nexus-test");
+        location.add("cicd", "nexus-test", "1.2.0", PUBLISHED);
+        location.fetches().clear();
+
+        sync(NONE, request);
+
+        assertThat(installedVersion()).isEqualTo("1.1.0");
+        assertThat(location.fetches()).containsExactly("cicd/nexus-test:1.1.0:published");
+    }
+
+    @Test
+    void resolvesAgainIfTheLocationChanged() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        FakeSkillSource moved = new FakeSkillSource("de.eitco:moved:nexus-test", tempDirectory.resolve("images"));
+        source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+        location.add("cicd", "nexus-test", "1.2.0", PUBLISHED);
+        moved.add("cicd", "nexus-test", "1.3.0", PUBLISHED);
+        sync(NONE, NEXUS_TEST_1);
+
+        sync(NONE, SkillRequest.located(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, location));
+        assertThat(installedVersion()).isEqualTo("1.2.0");
+
+        sync(NONE, SkillRequest.located(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, moved));
+        assertThat(installedVersion()).isEqualTo("1.3.0");
+        assertThat(lockFile().read()).singleElement()
+                .satisfies(locked -> assertThat(locked.requestedLocation()).isEqualTo("de.eitco:moved:nexus-test"));
+
+        sync(NONE, NEXUS_TEST_1);
+        assertThat(installedVersion()).isEqualTo("1.1.0");
+        assertThat(lockFile().read()).singleElement()
+                .satisfies(locked -> assertThat(locked.requestedLocation()).isNull());
+    }
+
+    @Test
     void resolvesAgainIfSelectedForUpdate() throws Exception {
         source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
         sync(NONE, NEXUS_TEST_1);

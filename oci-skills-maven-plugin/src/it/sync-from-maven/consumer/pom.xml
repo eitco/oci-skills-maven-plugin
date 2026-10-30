@@ -65,6 +65,13 @@
                             <version>1.0.0</version>
                             <source>it-maven-solo</source>
                         </skill>
+                        <skill>
+                            <!-- located directly - the classifier defaults to the name: cicd-skills-1.0.0-delta.jar -->
+                            <id>cicd/delta</id>
+                            <version>[1.0,2.0)</version>
+                            <groupId>de.eitco.cicd.it</groupId>
+                            <artifactId>cicd-skills</artifactId>
+                        </skill>
                     </skills>
                 </configuration>
                 <executions>

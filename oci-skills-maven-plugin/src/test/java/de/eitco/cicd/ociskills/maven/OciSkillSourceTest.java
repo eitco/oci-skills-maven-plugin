@@ -92,6 +92,20 @@ class OciSkillSourceTest {
     }
 
     @Test
+    void pullsAFixedImage() throws Exception {
+        tags = List.of("1.0.0", "1.1.0-draft");
+        OciSkillSource image = OciSkillSource.image("nexus.eitco.de/teams/acme/nexus-test", "nexus.eitco.de",
+                "teams/acme/nexus-test", client, CREDENTIALS);
+
+        assertThat(image.id()).isEqualTo("nexus.eitco.de/teams/acme/nexus-test");
+        assertThat(image.versions(NEXUS_TEST, null, "[1.0,2.0)")).containsExactlyInAnyOrder("1.0.0", "1.1.0");
+        image.fetch(NEXUS_TEST, null, "1.1.0", DRAFT, DIGEST, tempDirectory);
+
+        assertThat(calls).containsExactly("tags nexus.eitco.de/teams/acme/nexus-test reader",
+                "pull nexus.eitco.de/teams/acme/nexus-test:1.1.0-draft " + DIGEST + " reader");
+    }
+
+    @Test
     void needsARepository() {
         assertThatThrownBy(() -> sourceWithoutRepository().versions(NEXUS_TEST, null, "[1.0,2.0)"))
                 .isInstanceOf(SkillPullException.class)

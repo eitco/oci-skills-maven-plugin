@@ -25,8 +25,8 @@ import java.util.function.Predicate;
 /**
  * Brings the installed skills in line with the requested skills and the lock file:
  * <ol>
- *     <li>requests without lock entry, with a changed version, status or repository, or selected for update are
- *     resolved - all others keep their locked version and digest</li>
+ *     <li>requests without lock entry, with a changed version, status, repository or location, or selected for
+ *     update are resolved - all others keep their locked version and digest</li>
  *     <li>skills whose installed digest differs from the locked digest are fetched and installed</li>
  *     <li>installed skills of the lock file that are no longer requested are removed - skills installed
  *     without lock file, e.g. by {@code oci-skills:pull}, are kept</li>
@@ -91,7 +91,7 @@ final class SkillSynchronizer {
                 log.accept("Installed " + describe(resolved.origin()));
             }
             return new LockedSkill(request.versionSpec(), request.minimumStatus(), request.repository(),
-                    resolved.origin());
+                    location(request), resolved.origin());
         }
         if (isInstalled(installed, locked.resolved())) {
             log.accept(describe(locked.resolved()) + " is up to date");
@@ -109,7 +109,12 @@ final class SkillSynchronizer {
         return request.versionSpec().equals(locked.requestedVersion())
                 && request.minimumStatus() == locked.requestedStatus()
                 && Objects.equals(request.repository(), locked.requestedRepository())
+                && Objects.equals(location(request), locked.requestedLocation())
                 && (request.source() == null || request.source().equals(locked.resolved().source()));
+    }
+
+    private static String location(SkillRequest request) {
+        return request.location() == null ? null : request.location().id();
     }
 
     private static boolean isInstalled(SkillOrigin installed, SkillOrigin origin) {

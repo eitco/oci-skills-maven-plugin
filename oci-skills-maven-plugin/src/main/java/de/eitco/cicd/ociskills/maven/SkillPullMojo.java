@@ -26,7 +26,6 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -207,10 +206,9 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
      * @return the origin according to the annotations of the image
      */
     private static SkillOrigin origin(SkillImage skillImage, String source) throws SkillPullException {
-        Map<String, String> annotations = Optional.ofNullable(skillImage.manifest().annotations()).orElse(Map.of());
+        Map<String, String> annotations = SkillAnnotations.of(skillImage);
         try {
-            return new SkillOrigin(new SkillId(annotations.get(ImageManifestBuilder.ANNOTATION_VENDOR),
-                    annotations.get(ImageManifestBuilder.ANNOTATION_TITLE)),
+            return new SkillOrigin(SkillAnnotations.id(skillImage),
                     annotations.get(ImageManifestBuilder.ANNOTATION_VERSION),
                     SkillStatus.parse(annotations.get(SkillStatus.ANNOTATION)),
                     skillImage.manifestDescriptor().digest(), source);

@@ -439,10 +439,60 @@ skill are taken from the tags of `<registry>/<repository>/<name>`, so the creden
 
 Every `<source>` needs an `id` unique among the sources. Other placeholders are a configuration error.
 
+**Direct location.** A `<skill>` may name where it is stored instead of using the sources - an OCI image without tag
+or the coordinates of a maven artifact. It is resolved and fetched from there only, the sources are not asked, so no
+`<sources>` are needed at all:
+
+```xml
+<skill>
+    <id>acme/nexus-test</id>
+    <version>[1.0,2.0)</version>
+    <!-- the tags <version>[-<status>] of this repository -->
+    <image>registry.example.com/teams/acme/skills/nexus-test</image>
+</skill>
+<skill>
+    <id>acme/release-notes</id>
+    <version>2.1.0</version>
+    <!-- com.example.acme:acme-skills:jar:release-notes:2.1.0 -->
+    <groupId>com.example.acme</groupId>
+    <artifactId>acme-skills</artifactId>
+</skill>
+```
+
+* `<image>` is `<registry>/<repository>` - literal, without tag or digest. The tag is the version suffixed with the
+  status unless the status is `published`. `registryServerId`, `allowPlainHttp` and `caCertificates` of the `<skill>`
+  take precedence; settings not given are taken from the first `oci` source with the same registry - without one the
+  registry is accessed anonymously via TLS trusting the CAs of the JVM only.
+* `<groupId>` and `<artifactId>` go together, `<classifier>` defaults to `{name}` and is suffixed with the status
+  unless the status is `published` - like for maven sources. All three may contain the placeholders of the skill id,
+  `<classifier>{name[:0]}</classifier>` selects the main artifact. Repository placeholders fail - there is no
+  `<repository>`.
+* `id` and `version` are still required: the image or artifact has to contain the skill `id`, it is installed into
+  `.claude/skills/<name>`.
+* A direct location cannot be combined with `<source>` or `<repository>`, `<image>` not with `<groupId>`/`<artifactId>`;
+  `registryServerId`, `allowPlainHttp` and `caCertificates` need `<image>`, `classifier` needs `<groupId>`.
+
+The `source` in the lock file and in `.oci-skill.json` is `<groupId>:<artifactId>[:<classifier>]` (expanded, without
+status and without classifier for the main artifact) or `<registry>/<repository>`. It is locked as
+`requested.location` - changing the location resolves the skill again:
+
+```yaml
+- id: acme/release-notes
+  requested:
+    version: 2.1.0
+    status: published
+    location: com.example.acme:acme-skills:release-notes
+  version: 2.1.0
+  status: published
+  digest: sha256:9c1e...
+  source: com.example.acme:acme-skills:release-notes
+```
+
 **Resolving.** `version` is a maven version range or an exact version - unlike maven, `1.2.0` matches only `1.2.0`.
 `status` is the least mature status accepted, default `published`. The sources are asked in their order, the first
 source knowing a matching version wins, `<source>` in a `<skill>` asks that source only. The highest matching version
-with an accepted status is taken - if a version has several statuses, the most mature one.
+with an accepted status is taken - if a version has several statuses, the most mature one. The image has to contain
+the requested skill - namespace and name of its annotations must match the `id`.
 
 **Lock file.** The resolved version and the digest of the image are written to `skills.lock.yaml` next to the POM.
 Commit it: as long as the request of a skill does not change, `sync` installs exactly the locked image - newer versions
@@ -465,8 +515,9 @@ skills:
   source: my-maven
 ```
 
-`requested` is the request the entry was resolved for - a request with another `version`, `status`, `repository`
-or `source` is resolved again. `repository` is only written for skills requested with one. The entries are sorted by id and the file is only written if its content changes. An invalid lock file
+`requested` is the request the entry was resolved for - a request with another `version`, `status`, `repository`,
+`location` or `source` is resolved again. `repository` and `location` are only written for skills requested with
+one. The entries are sorted by id and the file is only written if its content changes. An invalid lock file
 fails the build - fix it, or delete it and run `oci-skills:update`.
 
 **Installed skills.** Every skill is installed into `.claude/skills/<name>/` and marked with `.oci-skill.json`. Only
@@ -553,7 +604,7 @@ Without packaging `skill` the jar is attached with classifier `skills`. Every sk
 | parameter          | property                 | default                                    | description                                          |
 |--------------------|--------------------------|--------------------------------------------|------------------------------------------------------|
 | `sources`          |                          |                                            | the sources to pull from, see [Installing skills](#installing-skills) |
-| `skills`           |                          |                                            | the skills to install: `id`, `version`, `status`, `source`, `repository` |
+| `skills`           |                          |                                            | the skills to install: `id`, `version`, `status`, `source`, `repository` - or a [direct location](#installing-skills): `image` with `registryServerId`, `allowPlainHttp`, `caCertificates`, or `groupId`, `artifactId`, `classifier` |
 | `installDirectory` | `skill.installDirectory` | `${project.basedir}/.claude/skills`        | the skills are installed into `<dir>/<name>`         |
 | `lockFile`         | `skill.lockFile`         | `${project.basedir}/skills.lock.yaml`      | the lock file                                        |
 | `workDirectory`    |                          | `${project.build.directory}/skill-pull`    | downloaded images - deleted after the goal           |

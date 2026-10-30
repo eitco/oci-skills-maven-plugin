@@ -4,8 +4,6 @@ import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.install.SkillInstaller;
 import de.eitco.cicd.ociskills.core.install.SkillLockFile;
-import de.eitco.cicd.ociskills.core.oci.SkillStatus;
-import de.eitco.cicd.ociskills.core.registry.OciReferenceFactory;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -13,7 +11,6 @@ import org.apache.maven.settings.crypto.SettingsDecrypter;
 import org.eclipse.aether.RepositorySystem;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -37,8 +34,21 @@ abstract class AbstractSkillSyncMojo extends AbstractSkillPullMojo {
      *         <status>testing</status>
      *         <source>my-registry</source>
      *     </skill>
+     *     <skill>
+     *         <id>acme/lint</id>
+     *         <version>[1.0,2.0)</version>
+     *         <image>registry.example.com/teams/acme/skills/lint</image>
+     *     </skill>
+     *     <skill>
+     *         <id>acme/review</id>
+     *         <version>1.0.0</version>
+     *         <groupId>com.example.acme</groupId>
+     *         <artifactId>acme-skills</artifactId>
+     *     </skill>
      * </skills>
      * }</pre>
+     * A skill with {@code <image>} or {@code <groupId>} and {@code <artifactId>} is pulled from there only - the
+     * sources are not asked.
      */
     @Parameter
     private List<SkillConfiguration> skills;
@@ -90,23 +100,24 @@ abstract class AbstractSkillSyncMojo extends AbstractSkillPullMojo {
     }
 
     private List<SkillRequest> requests() throws MojoFailureException {
-        List<SkillRequest> requests = new ArrayList<>();
-        for (SkillConfiguration skill : skills == null ? List.<SkillConfiguration>of() : skills) {
-            try {
-                SkillId id = SkillId.parse(skill.getId());
-                String version = skill.getVersion();
-                SkillVersions.toRange(version);
-                SkillStatus status = skill.getStatus() == null || skill.getStatus().isBlank() ? SkillStatus.PUBLISHED
-                        : SkillStatus.parse(skill.getStatus());
-                String source = skill.getSource() == null || skill.getSource().isBlank() ? null
-                        : skill.getSource().trim();
-                String repository = skill.getRepository() == null || skill.getRepository().isBlank() ? null
-                        : OciReferenceFactory.normalizeRepository(skill.getRepository());
-                requests.add(new SkillRequest(id, version.trim(), status, source, repository));
-            } catch (IllegalArgumentException e) {
-                throw new MojoFailureException("invalid <skill> " + skill.getId() + ": " + e.getMessage(), e);
-            }
-        }
-        return requests;
+        return SkillRequests.create(skills == null ? List.of() : skills, sourceConfigurations(),
+                new SkillRequests.Locations() {
+                    @Override
+                    public SkillSource maven(String sourceId, String groupId, String artifactId, String classifier) {
+                        // an empty classifier is no valid template - {name[:0]} expands to it
+                        return new MavenSkillSource(sourceId, new SourceTemplate("groupId", groupId),
+                                new SourceTemplate("artifactId", artifactId),
+                                new SourceTemplate("classifier", classifier.isEmpty() ? "{name[:0]}" : classifier),
+                                repositorySystem(), repositorySession(), remoteRepositories());
+                    }
+
+                    @Override
+                    public SkillSource oci(String sourceId, String registry, String repository,
+                                           String registryServerId, boolean allowPlainHttp,
+                                           List<File> caCertificates) throws MojoFailureException {
+                        return OciSkillSource.image(sourceId, registry, repository,
+                                registryClient(caCertificates, allowPlainHttp), credentials(registryServerId));
+                    }
+                });
     }
 }

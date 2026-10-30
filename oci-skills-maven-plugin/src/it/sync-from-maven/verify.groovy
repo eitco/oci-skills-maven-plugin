@@ -53,8 +53,19 @@ byte[] soloManifest = new ZipFile(soloJar).withCloseable { zip ->
 }
 assert solo.digest == "sha256:" + MessageDigest.getInstance("SHA-256").digest(soloManifest).encodeHex().toString()
 
+// the skill located by its maven coordinates is pulled from there - its location is part of the request
+def delta = json.parse(new File(skills, "delta/.oci-skill.json"))
+assert delta.id == "cicd/delta"
+assert delta.version == "1.0.0"
+assert delta.source == "de.eitco.cicd.it:cicd-skills:delta"
+assert new File(skills, "delta/SKILL.md").text.contains("name: delta")
+assert lock.contains("id: cicd/delta")
+assert lock.contains("location: de.eitco.cicd.it:cicd-skills:delta")
+assert lock.contains("digest: " + delta.digest)
+assert lock.count("location:") == 1
+
 // every installed skill ignores itself in git, the install directory and the skill written by hand stay untouched
-["alpha", "beta", "gamma", "solo-epsilon"].each { assert new File(skills, it + "/.gitignore").readLines().contains("*") }
+["alpha", "beta", "gamma", "solo-epsilon", "delta"].each { assert new File(skills, it + "/.gitignore").readLines().contains("*") }
 assert !new File(skills, ".gitignore").exists()
 assert !new File(skills, "by-hand/.gitignore").exists()
 
@@ -65,3 +76,4 @@ int keptAfterDeploy = log.indexOf("cicd/alpha 1.0.0 (published) from it-maven is
 int updated = log.indexOf("Installed cicd/alpha 1.1.0 (published) from it-maven", keptAfterDeploy)
 assert pulled > 0 && upToDate > pulled && keptAfterDeploy > upToDate && updated > keptAfterDeploy
 assert log.indexOf("cicd/beta 1.0.0 (draft) from it-maven is up to date", updated) > 0
+assert log.indexOf("cicd/delta 1.0.0 (published) from de.eitco.cicd.it:cicd-skills:delta is up to date", updated) > 0

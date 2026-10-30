@@ -22,7 +22,6 @@ import org.eclipse.aether.version.Version;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -100,8 +99,7 @@ final class MavenSkillSource implements SkillSource {
     }
 
     static boolean hasStatus(SkillImage image, SkillStatus status) {
-        Map<String, String> annotations = Optional.ofNullable(image.manifest().annotations()).orElse(Map.of());
-        return status.value().equals(annotations.get(SkillStatus.ANNOTATION));
+        return status.value().equals(SkillAnnotations.of(image).get(SkillStatus.ANNOTATION));
     }
 
     private String coordinate(SourceTemplate template, SkillId skill, String repository) throws SkillPullException {

@@ -47,6 +47,13 @@ final class FakeSkillSource implements SkillSource {
     }
 
     /**
+     * Stores the image of another skill as the given skill - like a location delivering an unexpected skill.
+     */
+    void put(SkillId skill, String version, SkillStatus status, OciImageLayout image) {
+        images.put(new Key(skill, version, status), image);
+    }
+
+    /**
      * Lets the source fail for skills without repository - like a source whose templates use the repository.
      */
     void requireRepository() {

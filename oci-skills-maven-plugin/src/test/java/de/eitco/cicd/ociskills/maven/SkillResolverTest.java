@@ -227,6 +227,88 @@ class SkillResolverTest {
     }
 
     @Test
+    void asksOnlyTheLocationOfTheSkill() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        maven.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+        location.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+
+        SkillResolver.Resolved resolved = resolver().resolve(
+                SkillRequest.located(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, location), work());
+
+        assertThat(resolved.origin().source()).isEqualTo("de.eitco:skills:nexus-test");
+        assertThat(resolved.origin().version()).isEqualTo("1.0.0");
+        assertThat(maven.repositories()).isEmpty();
+        assertThat(oci.repositories()).isEmpty();
+    }
+
+    @Test
+    void resolvesALocatedSkillWithoutSources() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        location.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+
+        assertThat(new SkillResolver(List.of()).resolve(
+                SkillRequest.located(NEXUS_TEST, "1.0.0", PUBLISHED, location), work()).origin().version())
+                .isEqualTo("1.0.0");
+    }
+
+    @Test
+    void failsIfTheLocationDoesNotHaveTheSkill() {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+
+        assertThatThrownBy(() -> resolver().resolve(SkillRequest.located(NEXUS_TEST, "1.0.0", PUBLISHED, location),
+                work()))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("de.eitco:skills:nexus-test")
+                .hasMessageNotContaining("maven, oci");
+    }
+
+    @Test
+    void fetchesALockedSkillFromItsLocationOnly() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills:nexus-test", tempDirectory.resolve("images"));
+        OciImageLayout image = maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+        SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
+                "maven");
+        SkillRequest request = SkillRequest.located(NEXUS_TEST, "1.0.0", PUBLISHED, location);
+
+        assertThatThrownBy(() -> resolver().fetch(locked, request, work()))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("de.eitco:skills:nexus-test");
+        assertThat(maven.fetches()).isEmpty();
+
+        location.put(NEXUS_TEST, "1.0.0", PUBLISHED, image);
+        assertThat(resolver().fetch(locked, request, work()).source()).isEqualTo("de.eitco:skills:nexus-test");
+    }
+
+    @Test
+    void rejectsTheImageOfAnotherSkill() throws Exception {
+        FakeSkillSource location = new FakeSkillSource("de.eitco:skills", tempDirectory.resolve("images"));
+        OciImageLayout other = TestImages.build(tempDirectory.resolve("other"), "cicd", "alpha", "1.0.0", PUBLISHED,
+                "content");
+        location.put(NEXUS_TEST, "1.0.0", PUBLISHED, other);
+
+        assertThatThrownBy(() -> resolver().resolve(SkillRequest.located(NEXUS_TEST, "1.0.0", PUBLISHED, location),
+                work()))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("de.eitco:skills")
+                .hasMessageContaining("cicd/alpha")
+                .hasMessageContaining("cicd/nexus-test");
+    }
+
+    @Test
+    void rejectsALockedImageOfAnotherSkill() throws Exception {
+        OciImageLayout other = TestImages.build(tempDirectory.resolve("other"), "cicd", "alpha", "1.0.0", PUBLISHED,
+                "content");
+        maven.put(NEXUS_TEST, "1.0.0", PUBLISHED, other);
+        SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, other.manifestDescriptor().digest(),
+                "maven");
+
+        assertThatThrownBy(() -> resolver().fetch(locked, LOCKED_REQUEST, work()))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("cicd/alpha")
+                .hasMessageContaining("cicd/nexus-test");
+    }
+
+    @Test
     void failsIfASourceCannotPlaceTheSkill() throws Exception {
         maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
         oci.add("cicd", "nexus-test", "1.0.0", PUBLISHED);

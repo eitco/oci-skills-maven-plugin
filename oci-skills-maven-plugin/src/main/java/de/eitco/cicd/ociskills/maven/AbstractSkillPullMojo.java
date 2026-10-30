@@ -107,13 +107,20 @@ abstract class AbstractSkillPullMojo extends AbstractMojo {
     }
 
     /**
+     * @return the configuration of the sources in their order
+     */
+    protected List<SkillSourceConfiguration> sourceConfigurations() {
+        return sources == null ? List.of() : sources;
+    }
+
+    /**
      * @return the configured sources in their order
      * @throws MojoFailureException if a source is configured incorrectly
      */
     protected List<SkillSource> sources() throws MojoFailureException {
         List<SkillSource> result = new ArrayList<>();
         Set<String> ids = new HashSet<>();
-        for (SkillSourceConfiguration source : sources == null ? List.<SkillSourceConfiguration>of() : sources) {
+        for (SkillSourceConfiguration source : sourceConfigurations()) {
             String id = source.getId();
             if (id == null || id.isBlank()) {
                 throw new MojoFailureException("every <source> needs an <id>");

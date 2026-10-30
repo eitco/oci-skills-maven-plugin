@@ -18,7 +18,9 @@ import java.util.Optional;
  * Pulls skills from an OCI registry - like {@code oci-skills:push} pushes them: a skill is the image
  * {@code <registry>/<repository>/<name>:<tag>}, the tag is the version suffixed with the status unless the status
  * is {@code published}. The repository is the {@code <repository>} of the skill - for skills without, the one
- * configured for the source. Versions are taken from the tags of the repository.
+ * configured for the source. A source of a single {@link #image(String, String, String, OciRegistryClient,
+ * RegistryCredentials) image} pulls {@code <registry>/<repository>:<tag>} instead. Versions are taken from the tags
+ * of the repository.
  */
 final class OciSkillSource implements SkillSource {
 
@@ -27,17 +29,36 @@ final class OciSkillSource implements SkillSource {
     private final SourceTemplate repositoryTemplate;
     private final OciRegistryClient client;
     private final RegistryCredentials credentials;
+    /**
+     * The repository of the image of a source of a single image - {@code null} for a source of many skills.
+     */
+    private final String imageRepository;
 
     /**
      * @param repositoryTemplate the repository of skills requested without - {@code null} if there is none
      */
     OciSkillSource(String id, String registry, SourceTemplate repositoryTemplate, OciRegistryClient client,
                    RegistryCredentials credentials) {
+        this(id, registry, repositoryTemplate, client, credentials, null);
+    }
+
+    private OciSkillSource(String id, String registry, SourceTemplate repositoryTemplate, OciRegistryClient client,
+                           RegistryCredentials credentials, String imageRepository) {
         this.id = id;
         this.registry = registry;
         this.repositoryTemplate = repositoryTemplate;
         this.client = client;
         this.credentials = credentials;
+        this.imageRepository = imageRepository;
+    }
+
+    /**
+     * A source of a single skill: the image {@code <registry>/<repository>} - the repository is not suffixed with
+     * the skill name.
+     */
+    static OciSkillSource image(String id, String registry, String repository, OciRegistryClient client,
+                                RegistryCredentials credentials) {
+        return new OciSkillSource(id, registry, null, client, credentials, repository);
     }
 
     @Override
@@ -62,6 +83,9 @@ final class OciSkillSource implements SkillSource {
     }
 
     private OciReference reference(SkillId skill, String repository, String tag) throws SkillPullException {
+        if (imageRepository != null) {
+            return new OciReference(registry, imageRepository, tag);
+        }
         if (repository != null) {
             return new OciReference(registry, repository + "/" + skill.name(), tag);
         }

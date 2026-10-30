@@ -98,22 +98,23 @@ public class SkillLockFile {
             SkillOrigin resolved = skill.resolved();
             return new EntryJson(resolved.id().toString(),
                     new RequestedJson(skill.requestedVersion(), skill.requestedStatus().value(),
-                            skill.requestedRepository()),
+                            skill.requestedRepository(), skill.requestedLocation()),
                     resolved.version(), resolved.status().value(), resolved.digest().toString(), resolved.source());
         }
 
         LockedSkill toLockedSkill() {
             Objects.requireNonNull(requested, "requested of " + id);
             return new LockedSkill(Objects.requireNonNull(requested.version(), "requested version of " + id),
-                    SkillStatus.parse(requested.status()), requested.repository(),
+                    SkillStatus.parse(requested.status()), requested.repository(), requested.location(),
                     new SkillOrigin(SkillId.parse(id), Objects.requireNonNull(version, "version of " + id),
                             SkillStatus.parse(status), Digest.parse(Objects.requireNonNull(digest, "digest of " + id)),
                             source));
         }
     }
 
-    @JsonPropertyOrder({"version", "status", "repository"})
+    @JsonPropertyOrder({"version", "status", "repository", "location"})
     private record RequestedJson(String version, String status,
-                                 @JsonInclude(JsonInclude.Include.NON_NULL) String repository) {
+                                 @JsonInclude(JsonInclude.Include.NON_NULL) String repository,
+                                 @JsonInclude(JsonInclude.Include.NON_NULL) String location) {
     }
 }

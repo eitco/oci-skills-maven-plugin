@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
  * Resolving asks the sources in their order - the first source knowing a matching version wins. Within it, the
  * highest version with an accepted status is taken, preferring the more mature status if a version has several.
  * Fetching a locked skill tries the source it was resolved from first, then all others - each of them has to
- * deliver exactly the locked digest.
+ * deliver exactly the locked digest. A skill requested with a location is resolved and fetched from there only.
+ * Every image has to contain the requested skill.
  */
 final class SkillResolver {
 
@@ -39,7 +40,8 @@ final class SkillResolver {
         SkillId id = request.id();
         String versionSpec = request.versionSpec();
         List<SkillStatus> accepted = accepted(request.minimumStatus());
-        for (SkillSource source : sources(request.source())) {
+        List<SkillSource> candidates = sources(request);
+        for (SkillSource source : candidates) {
             List<String> versions = source.versions(id, request.repository(), versionSpec).stream()
                     .sorted(SkillVersions.ORDER.reversed())
                     .toList();
@@ -48,6 +50,7 @@ final class SkillResolver {
                     Optional<SkillImage> image = source.fetch(id, request.repository(), version, status, null,
                             newDirectory(directory));
                     if (image.isPresent()) {
+                        checkId(source, id, image.get());
                         return new Resolved(new SkillOrigin(id, version, status,
                                 image.get().manifestDescriptor().digest(), source.id()), image.get());
                     }
@@ -56,7 +59,7 @@ final class SkillResolver {
         }
         throw new SkillPullException("no version " + versionSpec + " of " + id + " with status "
                 + accepted.stream().map(SkillStatus::value).collect(Collectors.joining(" or "))
-                + " found in the sources " + ids(sources(request.source())));
+                + " found in the sources " + ids(candidates));
     }
 
     /**
@@ -65,12 +68,13 @@ final class SkillResolver {
      * @return the image of the locked skill - a source delivering another digest is an error
      */
     Fetched fetch(SkillOrigin locked, SkillRequest request, Path directory) throws SkillPullException {
-        List<SkillSource> candidates = new ArrayList<>(sources(request.source()));
+        List<SkillSource> candidates = new ArrayList<>(sources(request));
         candidates.sort(Comparator.comparing(source -> !source.id().equals(locked.source())));
         for (SkillSource source : candidates) {
             Optional<SkillImage> image = source.fetch(locked.id(), request.repository(), locked.version(),
                     locked.status(), locked.digest(), newDirectory(directory));
             if (image.isPresent()) {
+                checkId(source, locked.id(), image.get());
                 if (!image.get().manifestDescriptor().digest().equals(locked.digest())) {
                     throw new SkillPullException("the source " + source.id() + " has another image of "
                             + locked.id() + " " + locked.version() + " (" + locked.status().value() + ") than the lock "
@@ -95,7 +99,11 @@ final class SkillResolver {
                 .toList();
     }
 
-    private List<SkillSource> sources(String sourceId) throws SkillPullException {
+    private List<SkillSource> sources(SkillRequest request) throws SkillPullException {
+        if (request.location() != null) {
+            return List.of(request.location());
+        }
+        String sourceId = request.source();
         if (sourceId == null || sourceId.isBlank()) {
             return sources;
         }
@@ -105,6 +113,20 @@ final class SkillResolver {
                 .map(List::of)
                 .orElseThrow(() -> new SkillPullException("the source " + sourceId + " is not configured - "
                         + "configured sources: " + ids(sources)));
+    }
+
+    private static void checkId(SkillSource source, SkillId requested, SkillImage image) throws SkillPullException {
+        SkillId found;
+        try {
+            found = SkillAnnotations.id(image);
+        } catch (IllegalArgumentException e) {
+            throw new SkillPullException("the source " + source.id() + " delivered no skill image built by the "
+                    + "plugin for " + requested + ": " + e.getMessage(), e);
+        }
+        if (!found.equals(requested)) {
+            throw new SkillPullException("the source " + source.id() + " delivered the skill " + found
+                    + " instead of " + requested);
+        }
     }
 
     private static String ids(List<SkillSource> sources) {
