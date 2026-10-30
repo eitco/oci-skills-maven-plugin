@@ -32,7 +32,8 @@ import java.util.Optional;
 /**
  * Pulls skills from maven repositories - like {@code oci-skills:archive} attaches them: a skill is the artifact
  * {@code <groupId>:<artifactId>:tar:<classifier>:<version>}, the classifier is the skill name suffixed with the
- * status unless the status is {@code published}. Uses the repositories, mirrors and credentials of the build -
+ * status unless the status is {@code published}. Group and artifact id are templates that may be derived from the
+ * {@code <repository>} of the skill. Uses the repositories, mirrors and credentials of the build -
  * including the local repository and the reactor.
  */
 final class MavenSkillSource implements SkillSource {
@@ -62,9 +63,9 @@ final class MavenSkillSource implements SkillSource {
     }
 
     @Override
-    public List<String> versions(SkillId skill, String versionSpec) throws SkillPullException {
-        Artifact artifact = new DefaultArtifact(groupId.expand(skill), artifactId.expand(skill), EXTENSION,
-                SkillVersions.toRange(versionSpec));
+    public List<String> versions(SkillId skill, String repository, String versionSpec) throws SkillPullException {
+        Artifact artifact = new DefaultArtifact(expand(groupId, skill, repository),
+                expand(artifactId, skill, repository), EXTENSION, SkillVersions.toRange(versionSpec));
         try {
             return repositorySystem.resolveVersionRange(session,
                             new VersionRangeRequest(artifact, repositories, null))
@@ -78,10 +79,19 @@ final class MavenSkillSource implements SkillSource {
     }
 
     @Override
-    public Optional<OciImageLayout> fetch(SkillId skill, String version, SkillStatus status, Digest digest,
-                                          Path directory) throws SkillPullException {
-        return fetch(repositorySystem, session, repositories, new DefaultArtifact(groupId.expand(skill),
-                artifactId.expand(skill), StatusSuffix.append(skill.name(), status), EXTENSION, version), directory);
+    public Optional<OciImageLayout> fetch(SkillId skill, String repository, String version, SkillStatus status,
+                                          Digest digest, Path directory) throws SkillPullException {
+        return fetch(repositorySystem, session, repositories, new DefaultArtifact(expand(groupId, skill, repository),
+                expand(artifactId, skill, repository), StatusSuffix.append(skill.name(), status), EXTENSION, version),
+                directory);
+    }
+
+    private String expand(SourceTemplate template, SkillId skill, String repository) throws SkillPullException {
+        try {
+            return template.expand(skill, repository);
+        } catch (IllegalArgumentException e) {
+            throw new SkillPullException("the source " + id + " cannot locate the skill: " + e.getMessage(), e);
+        }
     }
 
     /**

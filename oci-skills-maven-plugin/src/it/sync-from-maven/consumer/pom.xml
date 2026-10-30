@@ -35,18 +35,21 @@
                         <source>
                             <id>it-maven</id>
                             <type>maven</type>
-                            <groupId>de.eitco.cicd.it</groupId>
-                            <artifactId>{namespace}-skills</artifactId>
+                            <!-- it/cicd-skills -> de.eitco.cicd.it:cicd-skills -->
+                            <groupId>de.eitco.cicd.{repository.parent}</groupId>
+                            <artifactId>{repository.last}</artifactId>
                         </source>
                     </sources>
                     <skills>
                         <skill>
                             <id>cicd/alpha</id>
                             <version>[1.0,2.0)</version>
+                            <repository>it/cicd-skills</repository>
                         </skill>
                         <skill>
                             <id>cicd/beta</id>
                             <version>1.0.0</version>
+                            <repository>it/cicd-skills</repository>
                             <status>draft</status>
                         </skill>
                     </skills>

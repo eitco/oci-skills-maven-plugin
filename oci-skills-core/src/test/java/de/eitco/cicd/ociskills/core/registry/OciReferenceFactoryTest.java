@@ -62,5 +62,27 @@ class OciReferenceFactoryTest {
         assertThatThrownBy(() -> factory.create("localhost:5000", repository, "nexus-test", "0.0.1"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("repository");
+        assertThatThrownBy(() -> OciReferenceFactory.normalizeRepository(repository))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(repository);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "teams/acme/skills,     teams/acme/skills",
+            "/teams//acme/skills/,  teams/acme/skills",
+            "' skills ',            skills",
+    })
+    void normalizesRepositories(String repository, String expected) {
+        assertThat(OciReferenceFactory.normalizeRepository(repository)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @CsvSource({"' '", "/"})
+    void rejectsEmptyRepositories(String repository) {
+        assertThatThrownBy(() -> OciReferenceFactory.normalizeRepository(repository))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("repository");
     }
 }

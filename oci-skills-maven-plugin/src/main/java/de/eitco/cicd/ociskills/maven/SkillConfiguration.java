@@ -27,6 +27,14 @@ public class SkillConfiguration {
      */
     private String source;
 
+    /**
+     * The OCI repository path the skill is stored below, e.g. {@code teams/acme/skills} - the {@code <repository>}
+     * it was pushed with. OCI sources pull {@code <registry>/<repository>/<name>}, maven sources derive group and
+     * artifact id from it with the placeholders {@code {repository}}, {@code {repository.parent}} and
+     * {@code {repository.last}}. Without it, the sources use their own configuration.
+     */
+    private String repository;
+
     String getId() {
         return id;
     }
@@ -41,5 +49,9 @@ public class SkillConfiguration {
 
     String getSource() {
         return source;
+    }
+
+    String getRepository() {
+        return repository;
     }
 }

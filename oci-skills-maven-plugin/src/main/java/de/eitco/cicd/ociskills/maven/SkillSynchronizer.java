@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -24,8 +25,8 @@ import java.util.function.Predicate;
 /**
  * Brings the installed skills in line with the requested skills and the lock file:
  * <ol>
- *     <li>requests without lock entry, with a changed version or status, or selected for update are resolved -
- *     all others keep their locked version and digest</li>
+ *     <li>requests without lock entry, with a changed version, status or repository, or selected for update are
+ *     resolved - all others keep their locked version and digest</li>
  *     <li>skills whose installed digest differs from the locked digest are fetched and installed</li>
  *     <li>installed skills of the lock file that are no longer requested are removed - skills installed
  *     without lock file, e.g. by {@code oci-skills:pull}, are kept</li>
@@ -82,20 +83,20 @@ final class SkillSynchronizer {
     private LockedSkill sync(SkillRequest request, LockedSkill locked, SkillOrigin installed,
                              Predicate<SkillId> update) throws SkillPullException {
         if (locked == null || update.test(request.id()) || !matches(request, locked)) {
-            SkillResolver.Resolved resolved = resolver.resolve(request.id(), request.versionSpec(),
-                    request.minimumStatus(), request.source(), workDirectory);
+            SkillResolver.Resolved resolved = resolver.resolve(request, workDirectory);
             if (isInstalled(installed, resolved.origin())) {
                 log.accept(describe(resolved.origin()) + " is up to date");
             } else {
                 installer.install(resolved.image(), resolved.origin());
                 log.accept("Installed " + describe(resolved.origin()));
             }
-            return new LockedSkill(request.versionSpec(), request.minimumStatus(), resolved.origin());
+            return new LockedSkill(request.versionSpec(), request.minimumStatus(), request.repository(),
+                    resolved.origin());
         }
         if (isInstalled(installed, locked.resolved())) {
             log.accept(describe(locked.resolved()) + " is up to date");
         } else {
-            SkillResolver.Fetched fetched = resolver.fetch(locked.resolved(), request.source(), workDirectory);
+            SkillResolver.Fetched fetched = resolver.fetch(locked.resolved(), request, workDirectory);
             SkillOrigin origin = locked.resolved();
             installer.install(fetched.image(), new SkillOrigin(origin.id(), origin.version(), origin.status(),
                     origin.digest(), fetched.source()));
@@ -107,6 +108,7 @@ final class SkillSynchronizer {
     private static boolean matches(SkillRequest request, LockedSkill locked) {
         return request.versionSpec().equals(locked.requestedVersion())
                 && request.minimumStatus() == locked.requestedStatus()
+                && Objects.equals(request.repository(), locked.requestedRepository())
                 && (request.source() == null || request.source().equals(locked.resolved().source()));
     }
 

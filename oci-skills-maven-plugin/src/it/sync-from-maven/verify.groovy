@@ -25,6 +25,7 @@ assert new File(skills, "by-hand/SKILL.md").text.contains("A skill written by ha
 String lock = new File(consumer, "skills.lock.yaml").text
 assert lock.contains("id: cicd/alpha")
 assert lock.contains('version: "[1.0,2.0)"')
+assert lock.contains("repository: it/cicd-skills")
 assert lock.contains("id: cicd/beta")
 assert lock.contains("status: draft")
 assert lock.contains("digest: " + alpha.digest)

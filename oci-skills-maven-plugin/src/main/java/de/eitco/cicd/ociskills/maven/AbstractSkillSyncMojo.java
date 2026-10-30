@@ -5,6 +5,7 @@ import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.install.SkillInstaller;
 import de.eitco.cicd.ociskills.core.install.SkillLockFile;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
+import de.eitco.cicd.ociskills.core.registry.OciReferenceFactory;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -28,6 +29,7 @@ abstract class AbstractSkillSyncMojo extends AbstractSkillPullMojo {
      *     <skill>
      *         <id>acme/nexus-test</id>
      *         <version>[1.0,2.0)</version>
+     *         <repository>teams/acme/skills</repository>
      *     </skill>
      *     <skill>
      *         <id>acme/release-notes</id>
@@ -98,7 +100,9 @@ abstract class AbstractSkillSyncMojo extends AbstractSkillPullMojo {
                         : SkillStatus.parse(skill.getStatus());
                 String source = skill.getSource() == null || skill.getSource().isBlank() ? null
                         : skill.getSource().trim();
-                requests.add(new SkillRequest(id, version.trim(), status, source));
+                String repository = skill.getRepository() == null || skill.getRepository().isBlank() ? null
+                        : OciReferenceFactory.normalizeRepository(skill.getRepository());
+                requests.add(new SkillRequest(id, version.trim(), status, source, repository));
             } catch (IllegalArgumentException e) {
                 throw new MojoFailureException("invalid <skill> " + skill.getId() + ": " + e.getMessage(), e);
             }

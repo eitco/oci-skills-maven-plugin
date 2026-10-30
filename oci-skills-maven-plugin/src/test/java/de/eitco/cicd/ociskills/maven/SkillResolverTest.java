@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SkillResolverTest {
 
     private static final SkillId NEXUS_TEST = new SkillId("cicd", "nexus-test");
+    private static final SkillRequest LOCKED_REQUEST = new SkillRequest(NEXUS_TEST, "1.0.0", PUBLISHED, null);
 
     @TempDir
     Path tempDirectory;
@@ -36,6 +37,10 @@ class SkillResolverTest {
 
     private SkillResolver resolver() {
         return new SkillResolver(List.of(maven, oci));
+    }
+
+    private static SkillRequest request(String versionSpec, SkillStatus minimumStatus, String source) {
+        return new SkillRequest(NEXUS_TEST, versionSpec, minimumStatus, source);
     }
 
     private Path work() {
@@ -55,7 +60,7 @@ class SkillResolverTest {
         OciImageLayout expected = maven.add("cicd", "nexus-test", "1.10.0", PUBLISHED);
         maven.add("cicd", "nexus-test", "2.0.0", PUBLISHED);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("[1.0,2.0)", PUBLISHED, null), work());
 
         assertThat(resolved.origin()).isEqualTo(new SkillOrigin(NEXUS_TEST, "1.10.0", PUBLISHED,
                 expected.manifestDescriptor().digest(), "maven"));
@@ -67,7 +72,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
         maven.add("cicd", "nexus-test", "1.1.0", DRAFT);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("[1.0,2.0)", PUBLISHED, null), work());
 
         assertThat(resolved.origin().version()).isEqualTo("1.0.0");
         assertThat(maven.fetches()).containsExactly("cicd/nexus-test:1.1.0:published",
@@ -79,7 +84,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "1.1.0", DRAFT);
         maven.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "[1.0,2.0)", DRAFT, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("[1.0,2.0)", DRAFT, null), work());
 
         assertThat(resolved.origin().status()).isEqualTo(PUBLISHED);
     }
@@ -89,7 +94,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
         maven.add("cicd", "nexus-test", "1.1.0", TESTING);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "[1.0,2.0)", TESTING, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("[1.0,2.0)", TESTING, null), work());
 
         assertThat(resolved.origin().version()).isEqualTo("1.1.0");
         assertThat(resolved.origin().status()).isEqualTo(TESTING);
@@ -100,7 +105,7 @@ class SkillResolverTest {
         oci.add("cicd", "nexus-test", "1.5.0", PUBLISHED);
         maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("[1.0,2.0)", PUBLISHED, null), work());
 
         assertThat(resolved.origin().source()).isEqualTo("maven");
         assertThat(resolved.origin().version()).isEqualTo("1.0.0");
@@ -111,7 +116,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "1.0.0", DRAFT);
         oci.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "1.0.0", PUBLISHED, null, work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("1.0.0", PUBLISHED, null), work());
 
         assertThat(resolved.origin().source()).isEqualTo("oci");
     }
@@ -121,7 +126,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
         oci.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
 
-        SkillResolver.Resolved resolved = resolver().resolve(NEXUS_TEST, "1.0.0", PUBLISHED, "oci", work());
+        SkillResolver.Resolved resolved = resolver().resolve(request("1.0.0", PUBLISHED, "oci"), work());
 
         assertThat(resolved.origin().source()).isEqualTo("oci");
         assertThat(maven.fetches()).isEmpty();
@@ -129,7 +134,7 @@ class SkillResolverTest {
 
     @Test
     void rejectsAnUnknownPinnedSource() {
-        assertThatThrownBy(() -> resolver().resolve(NEXUS_TEST, "1.0.0", PUBLISHED, "missing", work()))
+        assertThatThrownBy(() -> resolver().resolve(request("1.0.0", PUBLISHED, "missing"), work()))
                 .isInstanceOf(SkillPullException.class)
                 .hasMessageContaining("missing")
                 .hasMessageContaining("maven, oci");
@@ -140,7 +145,7 @@ class SkillResolverTest {
         maven.add("cicd", "nexus-test", "2.0.0", PUBLISHED);
         oci.add("cicd", "nexus-test", "1.0.0", DRAFT);
 
-        assertThatThrownBy(() -> resolver().resolve(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, work()))
+        assertThatThrownBy(() -> resolver().resolve(request("[1.0,2.0)", PUBLISHED, null), work()))
                 .isInstanceOf(SkillPullException.class)
                 .hasMessageContaining("cicd/nexus-test")
                 .hasMessageContaining("[1.0,2.0)")
@@ -155,7 +160,7 @@ class SkillResolverTest {
         SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
                 "oci");
 
-        SkillResolver.Fetched fetched = resolver().fetch(locked, null, work());
+        SkillResolver.Fetched fetched = resolver().fetch(locked, LOCKED_REQUEST, work());
 
         assertThat(fetched.source()).isEqualTo("oci");
         assertThat(fetched.image().manifestDescriptor()).isEqualTo(image.manifestDescriptor());
@@ -168,7 +173,7 @@ class SkillResolverTest {
         SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
                 "gone");
 
-        assertThat(resolver().fetch(locked, null, work()).source()).isEqualTo("oci");
+        assertThat(resolver().fetch(locked, LOCKED_REQUEST, work()).source()).isEqualTo("oci");
     }
 
     @Test
@@ -178,7 +183,7 @@ class SkillResolverTest {
         SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
                 "maven");
 
-        assertThatThrownBy(() -> resolver().fetch(locked, null, work()))
+        assertThatThrownBy(() -> resolver().fetch(locked, LOCKED_REQUEST, work()))
                 .isInstanceOf(SkillPullException.class)
                 .hasMessageContaining("cicd/nexus-test")
                 .hasMessageContaining("maven")
@@ -193,10 +198,42 @@ class SkillResolverTest {
         SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
                 "maven");
 
-        assertThatThrownBy(() -> resolver().fetch(locked, null, work()))
+        assertThatThrownBy(() -> resolver().fetch(locked, LOCKED_REQUEST, work()))
                 .isInstanceOf(SkillPullException.class)
                 .hasMessageContaining("cicd/nexus-test")
                 .hasMessageContaining("1.0.0")
                 .hasMessageContaining("maven, oci");
+    }
+
+    @Test
+    void asksTheSourcesForTheRepositoryOfTheSkill() throws Exception {
+        maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+
+        resolver().resolve(new SkillRequest(NEXUS_TEST, "1.0.0", PUBLISHED, null, "teams/acme/skills"), work());
+
+        assertThat(maven.repositories()).isNotEmpty().containsOnly("teams/acme/skills");
+    }
+
+    @Test
+    void fetchesALockedSkillFromTheRepositoryOfTheSkill() throws Exception {
+        OciImageLayout image = maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+        SkillOrigin locked = new SkillOrigin(NEXUS_TEST, "1.0.0", PUBLISHED, image.manifestDescriptor().digest(),
+                "maven");
+
+        resolver().fetch(locked, new SkillRequest(NEXUS_TEST, "1.0.0", PUBLISHED, null, "teams/acme/skills"),
+                work());
+
+        assertThat(maven.repositories()).containsExactly("teams/acme/skills");
+    }
+
+    @Test
+    void failsIfASourceCannotPlaceTheSkill() throws Exception {
+        maven.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+        oci.add("cicd", "nexus-test", "1.0.0", PUBLISHED);
+        maven.requireRepository();
+
+        assertThatThrownBy(() -> resolver().resolve(request("1.0.0", PUBLISHED, null), work()))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("<repository>");
     }
 }

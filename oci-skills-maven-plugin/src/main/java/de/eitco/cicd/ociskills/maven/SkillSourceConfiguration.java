@@ -5,12 +5,14 @@ import java.util.List;
 
 /**
  * The configuration of a {@code <source>} skills are pulled from. {@code groupId}, {@code artifactId} and
- * {@code repository} may contain the placeholders {@code {namespace}} and {@code {name}} of the skill.
+ * {@code repository} may contain the placeholders {@code {namespace}} and {@code {name}} of the skill as well as
+ * {@code {repository}}, {@code {repository.parent}} and {@code {repository.last}} derived from its
+ * {@code <repository>} - see {@link SourceTemplate}.
  * <ul>
  *     <li>{@code maven}: the skill is the artifact {@code <groupId>:<artifactId>:tar:<classifier>} attached by
  *     {@code oci-skills:archive}. The repositories of the project are used.</li>
  *     <li>{@code oci}: the skill is the image {@code <registry>/<repository>/<name>} pushed by
- *     {@code oci-skills:push}.</li>
+ *     {@code oci-skills:push} - the {@code <repository>} of the skill, if it has one.</li>
  * </ul>
  */
 public class SkillSourceConfiguration {
@@ -29,12 +31,12 @@ public class SkillSourceConfiguration {
     private String type;
 
     /**
-     * {@code maven} only: the group id of the artifact, e.g. {@code com.example.{namespace}}.
+     * {@code maven} only: the group id of the artifact, e.g. {@code com.example.{repository.parent}}.
      */
     private String groupId;
 
     /**
-     * {@code maven} only: the artifact id of the artifact, e.g. {@code {namespace}-skills}.
+     * {@code maven} only: the artifact id of the artifact, e.g. {@code {repository.last}}.
      */
     private String artifactId;
 
@@ -44,8 +46,9 @@ public class SkillSourceConfiguration {
     private String registry;
 
     /**
-     * {@code oci} only: the repository path below which the skill is located, e.g.
-     * {@code skills/{namespace}}. The skill name is appended.
+     * {@code oci} only: the repository path below which skills without {@code <repository>} are located, e.g.
+     * {@code skills/{namespace}}. The skill name is appended. Without it, every skill needs a
+     * {@code <repository>}.
      */
     private String repository;
 

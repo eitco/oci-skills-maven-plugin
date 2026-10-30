@@ -9,6 +9,7 @@ import de.eitco.cicd.ociskills.core.oci.Digest;
 import de.eitco.cicd.ociskills.core.oci.ImageManifestBuilder;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 import de.eitco.cicd.ociskills.core.registry.OciReference;
+import de.eitco.cicd.ociskills.core.registry.OciReferenceFactory;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -59,6 +60,13 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
      */
     @Parameter(property = "skill.source")
     private String source;
+
+    /**
+     * With {@code skill}: the OCI repository path the skill is stored below, like {@code <repository>} of a
+     * {@code <skill>}.
+     */
+    @Parameter(property = "skill.pull.repository")
+    private String repository;
 
     /**
      * The skill artifact attached by {@code oci-skills:archive}:
@@ -127,10 +135,13 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
         String versionSpec = separator < 0 ? "[0,)" : value.substring(separator + 1);
         SkillId id;
         SkillStatus minimumStatus;
+        String skillRepository;
         try {
             id = SkillId.parse(separator < 0 ? value : value.substring(0, separator));
             SkillVersions.toRange(versionSpec);
             minimumStatus = SkillStatus.parse(status);
+            skillRepository = repository == null || repository.isBlank() ? null
+                    : OciReferenceFactory.normalizeRepository(repository);
         } catch (IllegalArgumentException e) {
             throw new MojoFailureException("invalid -Dskill=" + skill + ": " + e.getMessage(), e);
         }
@@ -139,8 +150,8 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
             throw new MojoFailureException("-Dskill needs <sources> in the plugin configuration - use "
                     + "-Dskill.artifact or -Dskill.image without project");
         }
-        SkillResolver.Resolved resolved = new SkillResolver(sources).resolve(id, versionSpec, minimumStatus,
-                source, workDirectory);
+        SkillResolver.Resolved resolved = new SkillResolver(sources).resolve(
+                new SkillRequest(id, versionSpec, minimumStatus, source, skillRepository), workDirectory);
         return new Pulled(resolved.origin(), resolved.image());
     }
 

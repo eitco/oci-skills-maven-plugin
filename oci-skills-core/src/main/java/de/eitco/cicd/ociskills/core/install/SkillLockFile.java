@@ -1,5 +1,6 @@
 package de.eitco.cicd.ociskills.core.install;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.oci.Digest;
@@ -96,21 +97,23 @@ public class SkillLockFile {
         static EntryJson of(LockedSkill skill) {
             SkillOrigin resolved = skill.resolved();
             return new EntryJson(resolved.id().toString(),
-                    new RequestedJson(skill.requestedVersion(), skill.requestedStatus().value()),
+                    new RequestedJson(skill.requestedVersion(), skill.requestedStatus().value(),
+                            skill.requestedRepository()),
                     resolved.version(), resolved.status().value(), resolved.digest().toString(), resolved.source());
         }
 
         LockedSkill toLockedSkill() {
             Objects.requireNonNull(requested, "requested of " + id);
             return new LockedSkill(Objects.requireNonNull(requested.version(), "requested version of " + id),
-                    SkillStatus.parse(requested.status()),
+                    SkillStatus.parse(requested.status()), requested.repository(),
                     new SkillOrigin(SkillId.parse(id), Objects.requireNonNull(version, "version of " + id),
                             SkillStatus.parse(status), Digest.parse(Objects.requireNonNull(digest, "digest of " + id)),
                             source));
         }
     }
 
-    @JsonPropertyOrder({"version", "status"})
-    private record RequestedJson(String version, String status) {
+    @JsonPropertyOrder({"version", "status", "repository"})
+    private record RequestedJson(String version, String status,
+                                 @JsonInclude(JsonInclude.Include.NON_NULL) String repository) {
     }
 }

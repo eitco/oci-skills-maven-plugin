@@ -34,14 +34,13 @@ abstract class AbstractSkillPullMojo extends AbstractMojo {
      *     <source>
      *         <id>my-maven</id>
      *         <type>maven</type>
-     *         <groupId>com.example.{namespace}</groupId>
-     *         <artifactId>{namespace}-skills</artifactId>
+     *         <groupId>com.example.{repository.parent}</groupId>
+     *         <artifactId>{repository.last}</artifactId>
      *     </source>
      *     <source>
      *         <id>my-registry</id>
      *         <type>oci</type>
      *         <registry>registry.example.com</registry>
-     *         <repository>skills/{namespace}</repository>
      *         <registryServerId>my-registry</registryServerId>
      *     </source>
      * </sources>
@@ -143,7 +142,8 @@ abstract class AbstractSkillPullMojo extends AbstractMojo {
                     throw new IllegalArgumentException("<registry> must be configured");
                 }
                 yield new OciSkillSource(source.getId(), source.getRegistry().trim(),
-                        new SourceTemplate("repository", source.getRepository()),
+                        source.getRepository() == null || source.getRepository().isBlank() ? null
+                                : new SourceTemplate("repository", source.getRepository()),
                         registryClient(source.getCaCertificates(), source.isAllowPlainHttp()),
                         credentials(source.getRegistryServerId()));
             }

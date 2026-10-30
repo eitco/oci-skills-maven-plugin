@@ -33,20 +33,20 @@ final class SkillResolver {
     }
 
     /**
-     * @param minimumStatus the least mature status accepted
-     * @param sourceId      the id of the only source to ask - {@code null} for all
-     * @param directory     a directory to write fetched layouts to
+     * @param directory a directory to write fetched layouts to
      */
-    Resolved resolve(SkillId id, String versionSpec, SkillStatus minimumStatus, String sourceId, Path directory)
-            throws SkillPullException {
-        List<SkillStatus> accepted = accepted(minimumStatus);
-        for (SkillSource source : sources(sourceId)) {
-            List<String> versions = source.versions(id, versionSpec).stream()
+    Resolved resolve(SkillRequest request, Path directory) throws SkillPullException {
+        SkillId id = request.id();
+        String versionSpec = request.versionSpec();
+        List<SkillStatus> accepted = accepted(request.minimumStatus());
+        for (SkillSource source : sources(request.source())) {
+            List<String> versions = source.versions(id, request.repository(), versionSpec).stream()
                     .sorted(SkillVersions.ORDER.reversed())
                     .toList();
             for (String version : versions) {
                 for (SkillStatus status : accepted) {
-                    Optional<OciImageLayout> image = source.fetch(id, version, status, null, newDirectory(directory));
+                    Optional<OciImageLayout> image = source.fetch(id, request.repository(), version, status, null,
+                            newDirectory(directory));
                     if (image.isPresent()) {
                         return new Resolved(new SkillOrigin(id, version, status,
                                 image.get().manifestDescriptor().digest(), source.id()), image.get());
@@ -56,20 +56,20 @@ final class SkillResolver {
         }
         throw new SkillPullException("no version " + versionSpec + " of " + id + " with status "
                 + accepted.stream().map(SkillStatus::value).collect(Collectors.joining(" or "))
-                + " found in the sources " + ids(sources(sourceId)));
+                + " found in the sources " + ids(sources(request.source())));
     }
 
     /**
-     * @param sourceId  the id of the only source to ask - {@code null} for all
+     * @param request   the request the skill was locked for
      * @param directory a directory to write fetched layouts to
      * @return the layout of the locked skill - a source delivering another digest is an error
      */
-    Fetched fetch(SkillOrigin locked, String sourceId, Path directory) throws SkillPullException {
-        List<SkillSource> candidates = new ArrayList<>(sources(sourceId));
+    Fetched fetch(SkillOrigin locked, SkillRequest request, Path directory) throws SkillPullException {
+        List<SkillSource> candidates = new ArrayList<>(sources(request.source()));
         candidates.sort(Comparator.comparing(source -> !source.id().equals(locked.source())));
         for (SkillSource source : candidates) {
-            Optional<OciImageLayout> image = source.fetch(locked.id(), locked.version(), locked.status(),
-                    locked.digest(), newDirectory(directory));
+            Optional<OciImageLayout> image = source.fetch(locked.id(), request.repository(), locked.version(),
+                    locked.status(), locked.digest(), newDirectory(directory));
             if (image.isPresent()) {
                 if (!image.get().manifestDescriptor().digest().equals(locked.digest())) {
                     throw new SkillPullException("the source " + source.id() + " has another image of "

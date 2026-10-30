@@ -282,14 +282,13 @@ registries into `.claude/skills`:
             <source>
                 <id>my-maven</id>
                 <type>maven</type>
-                <groupId>com.example.{namespace}</groupId>
-                <artifactId>{namespace}-skills</artifactId>
+                <groupId>com.example.{repository.parent}</groupId>
+                <artifactId>{repository.last}</artifactId>
             </source>
             <source>
                 <id>my-registry</id>
                 <type>oci</type>
                 <registry>registry.example.com</registry>
-                <repository>skills/{namespace}</repository>
                 <registryServerId>my-registry</registryServerId>
             </source>
         </sources>
@@ -297,11 +296,13 @@ registries into `.claude/skills`:
             <skill>
                 <id>acme/nexus-test</id>
                 <version>[1.0,2.0)</version>
+                <repository>teams/acme/skills</repository>
             </skill>
             <skill>
                 <id>acme/release-notes</id>
                 <version>2.1.0</version>
                 <status>testing</status>
+                <repository>products/notes/skills</repository>
             </skill>
         </skills>
     </configuration>
@@ -315,20 +316,39 @@ registries into `.claude/skills`:
 </plugin>
 ```
 
-A skill is identified by `<namespace>/<name>` of its SkillCard, independent of where it is stored. Every source maps
-it to its own coordinates - `{namespace}` and `{name}` are replaced in `groupId`, `artifactId` and `repository`:
+A skill is identified by `<namespace>/<name>` of its SkillCard, independent of where it is stored. Where it is
+stored is the `<repository>` of the `<skill>` - the OCI repository path it was pushed below, so a single source
+covers a whole registry or maven repository. Every source maps it to its own coordinates:
 
 | `type`  | the skill is                                                             | as created by        |
 |---------|--------------------------------------------------------------------------|----------------------|
 | `maven` | the artifact `<groupId>:<artifactId>:tar:<name>[-<status>]:<version>`    | `oci-skills:archive` |
 | `oci`   | the image `<registry>/<repository>/<name>:<version>[-<status>]`          | `oci-skills:push`    |
 
+For OCI sources the `<repository>` of the skill is used as it is. `groupId` and `artifactId` of maven sources - and
+the `<repository>` of OCI sources, which is used for skills without `<repository>` - are templates with these
+placeholders, shown for `acme/nexus-test` with the repository `teams/acme/skills`:
+
+| placeholder           | value                | from                                          |
+|-----------------------|----------------------|-----------------------------------------------|
+| `{namespace}`         | `acme`               | the skill id                                  |
+| `{name}`              | `nexus-test`         | the skill id                                  |
+| `{repository}`        | `teams.acme.skills`  | the repository, `/` replaced by `.`           |
+| `{repository.parent}` | `teams.acme`         | the repository without its last segment       |
+| `{repository.last}`   | `skills`             | the last segment of the repository            |
+
+With the example above `acme/nexus-test` is the artifact `com.example.teams.acme:skills:tar:nexus-test` and the image
+`registry.example.com/teams/acme/skills/nexus-test`. If a repository placeholder is used, repeated dots and dots at
+the start or end of the value are dropped - `com.example.{repository.parent}` with the repository `skills` is
+`com.example`. A source that cannot locate a skill fails the build - e.g. a template with a repository placeholder
+for a skill without `<repository>`, or an OCI source without `<repository>`. Pin such skills to another source with
+`<source>`.
+
 Maven sources use the repositories, mirrors and credentials of the build, including the local repository and the
 reactor. OCI sources take their credentials from the `<server>` with the id `registryServerId` - the versions of a
 skill are taken from the tags of `<registry>/<repository>/<name>`, so the credentials must be allowed to list them.
 
-Every `<source>` needs an `id` unique among the sources. Placeholders other than `{namespace}` and `{name}` are a
-configuration error.
+Every `<source>` needs an `id` unique among the sources. Other placeholders are a configuration error.
 
 **Resolving.** `version` is a maven version range or an exact version - unlike maven, `1.2.0` matches only `1.2.0`.
 `status` is the least mature status accepted, default `published`. The sources are asked in their order, the first
@@ -349,14 +369,15 @@ skills:
   requested:
     version: "[1.0,2.0)"
     status: published
+    repository: teams/acme/skills
   version: 1.1.0
   status: published
   digest: sha256:4f2a...
   source: my-maven
 ```
 
-`requested` is the request the entry was resolved for - a request with another `version`, `status` or `source` is
-resolved again. The entries are sorted by id and the file is only written if its content changes. An invalid lock file
+`requested` is the request the entry was resolved for - a request with another `version`, `status`, `repository`
+or `source` is resolved again. `repository` is only written for skills requested with one. The entries are sorted by id and the file is only written if its content changes. An invalid lock file
 fails the build - fix it, or delete it and run `oci-skills:update`.
 
 **Installed skills.** Every skill is installed into `.claude/skills/<name>/` and marked with `.oci-skill.json`. Only
@@ -375,7 +396,7 @@ with every build. A single skill can be installed from the command line without 
 
 ```shell
 mvn oci-skills:pull -Dskill=acme/nexus-test             # highest version from the configured sources
-mvn oci-skills:pull -Dskill=acme/nexus-test:1.2.0
+mvn oci-skills:pull -Dskill=acme/nexus-test:1.2.0 -Dskill.pull.repository=teams/acme/skills
 mvn oci-skills:pull -Dskill.artifact=com.example.acme:acme-skills:1.2.0:nexus-test
 mvn oci-skills:pull -Dskill.image=registry.example.com/skills/acme/nexus-test:1.2.0
 ```
@@ -441,14 +462,14 @@ Without packaging `skill` the tar file is attached with classifier `skills`. Eve
 | parameter          | property                 | default                                    | description                                          |
 |--------------------|--------------------------|--------------------------------------------|------------------------------------------------------|
 | `sources`          |                          |                                            | the sources to pull from, see [Installing skills](#installing-skills) |
-| `skills`           |                          |                                            | the skills to install: `id`, `version`, `status`, `source` |
+| `skills`           |                          |                                            | the skills to install: `id`, `version`, `status`, `source`, `repository` |
 | `installDirectory` | `skill.installDirectory` | `${project.basedir}/.claude/skills`        | the skills are installed into `<dir>/<name>`         |
 | `lockFile`         | `skill.lockFile`         | `${project.basedir}/skills.lock.yaml`      | the lock file                                        |
 | `workDirectory`    |                          | `${project.build.directory}/skill-pull`    | downloaded images - deleted after the goal           |
 | `skip`             | `skill.sync.skip`        | `false`                                    | skip installing skills                               |
 
-A `<source>` has an `id`, a `type` (`maven` or `oci`) and `groupId` and `artifactId` (`maven`) or `registry`,
-`repository`, `registryServerId`, `caCertificates` and `allowPlainHttp` (`oci`).
+A `<source>` has an `id`, a `type` (`maven` or `oci`) and `groupId` and `artifactId` (`maven`, required) or
+`registry`, `repository` (optional), `registryServerId`, `caCertificates` and `allowPlainHttp` (`oci`).
 
 ### `oci-skills:update`
 
@@ -463,6 +484,7 @@ for new versions regardless of their update policy, like with `-U`.
 | `skill`            | `skill`                     |             | `<namespace>/<name>[:<version>]`, resolved from the `sources`  |
 | `status`           | `skill.status`              | `published` | with `skill`: the least mature status accepted                 |
 | `source`           | `skill.source`              |             | with `skill`: the only source to ask                           |
+| `repository`       | `skill.pull.repository`     |             | with `skill`: the repository of the skill, like `<repository>` of a `<skill>` |
 | `artifact`         | `skill.artifact`            |             | `<groupId>:<artifactId>:<version>:<classifier>`                |
 | `image`            | `skill.image`               |             | `<registry>/<repository>:<tag>` or `<registry>/<repository>@<digest>` |
 | `registryServerId` | `skill.registryServerId`    |             | with `image`: id of the `<server>` in `settings.xml`           |

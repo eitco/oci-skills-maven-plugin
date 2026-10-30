@@ -115,6 +115,44 @@ class SkillSynchronizerTest {
     }
 
     @Test
+    void locksTheRequestedRepository() throws Exception {
+        source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+
+        sync(NONE, new SkillRequest(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, "teams/acme/skills"));
+
+        assertThat(source.repositories()).isNotEmpty().containsOnly("teams/acme/skills");
+        assertThat(lockFile().read()).singleElement()
+                .satisfies(locked -> assertThat(locked.requestedRepository()).isEqualTo("teams/acme/skills"));
+    }
+
+    @Test
+    void resolvesAgainIfTheRepositoryChanged() throws Exception {
+        source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+        sync(NONE, NEXUS_TEST_1);
+        source.add("cicd", "nexus-test", "1.2.0", PUBLISHED);
+
+        sync(NONE, new SkillRequest(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, "teams/acme/skills"));
+
+        assertThat(installedVersion()).isEqualTo("1.2.0");
+        assertThat(lockFile().read()).singleElement()
+                .satisfies(locked -> assertThat(locked.requestedRepository()).isEqualTo("teams/acme/skills"));
+    }
+
+    @Test
+    void installsTheLockedVersionFromTheRequestedRepository() throws Exception {
+        SkillRequest request = new SkillRequest(NEXUS_TEST, "[1.0,2.0)", PUBLISHED, null, "teams/acme/skills");
+        source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
+        sync(NONE, request);
+        installer().remove("nexus-test");
+        source.repositories().clear();
+
+        sync(NONE, request);
+
+        assertThat(installedVersion()).isEqualTo("1.1.0");
+        assertThat(source.repositories()).containsExactly("teams/acme/skills");
+    }
+
+    @Test
     void resolvesAgainIfSelectedForUpdate() throws Exception {
         source.add("cicd", "nexus-test", "1.1.0", PUBLISHED);
         sync(NONE, NEXUS_TEST_1);

@@ -36,6 +36,28 @@ public class OciReferenceFactory {
         String path = Arrays.stream((repository.trim() + "/" + name).split("/"))
                 .filter(component -> !component.isEmpty())
                 .collect(Collectors.joining("/"));
+        checkComponents(repository, path);
+        return new OciReference(host, path, tag);
+    }
+
+    /**
+     * @param repository a repository path like {@code skills/acme} - leading, trailing and repeated slashes are
+     *                   allowed
+     * @return the repository without superfluous slashes
+     * @throws IllegalArgumentException if the repository is empty or contains invalid path components
+     */
+    public static String normalizeRepository(String repository) {
+        String path = repository == null ? "" : Arrays.stream(repository.trim().split("/"))
+                .filter(component -> !component.isEmpty())
+                .collect(Collectors.joining("/"));
+        if (path.isEmpty()) {
+            throw new IllegalArgumentException("repository is missing");
+        }
+        checkComponents(repository, path);
+        return path;
+    }
+
+    private static void checkComponents(String repository, String path) {
         for (String component : path.split("/")) {
             if (!PATH_COMPONENT.matcher(component).matches()) {
                 throw new IllegalArgumentException("repository '" + repository + "' contains the invalid path "
@@ -43,6 +65,5 @@ public class OciReferenceFactory {
                         + "'-' are allowed");
             }
         }
-        return new OciReference(host, path, tag);
     }
 }

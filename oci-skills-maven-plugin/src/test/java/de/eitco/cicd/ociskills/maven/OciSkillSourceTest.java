@@ -1,5 +1,6 @@
 package de.eitco.cicd.ociskills.maven;
 
+import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
 import de.eitco.cicd.ociskills.core.oci.Digest;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import static de.eitco.cicd.ociskills.core.oci.SkillStatus.DRAFT;
 import static de.eitco.cicd.ociskills.core.oci.SkillStatus.PUBLISHED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OciSkillSourceTest {
 
@@ -57,21 +59,49 @@ class OciSkillSourceTest {
                 client, CREDENTIALS);
     }
 
+    private OciSkillSource sourceWithoutRepository() {
+        return new OciSkillSource("oci", "nexus.eitco.de", null, client, CREDENTIALS);
+    }
+
     @Test
     void takesTheVersionsFromTheTags() throws Exception {
         tags = List.of("1.0.0", "1.1.0-draft", "1.1.0", "1.2.0-testing", "2.0.0", "latest-unrelated");
 
-        assertThat(source().versions(NEXUS_TEST, "[1.0,2.0)")).containsExactlyInAnyOrder("1.0.0", "1.1.0", "1.2.0");
+        assertThat(source().versions(NEXUS_TEST, null, "[1.0,2.0)"))
+                .containsExactlyInAnyOrder("1.0.0", "1.1.0", "1.2.0");
         assertThat(calls).containsExactly("tags nexus.eitco.de/docker/cicd/nexus-test reader");
     }
 
     @Test
     void pullsTheTagOfVersionAndStatus() throws Exception {
-        source().fetch(NEXUS_TEST, "1.1.0", DRAFT, DIGEST, tempDirectory);
-        source().fetch(NEXUS_TEST, "1.1.0", PUBLISHED, null, tempDirectory);
+        source().fetch(NEXUS_TEST, null, "1.1.0", DRAFT, DIGEST, tempDirectory);
+        source().fetch(NEXUS_TEST, null, "1.1.0", PUBLISHED, null, tempDirectory);
 
         assertThat(calls).containsExactly(
                 "pull nexus.eitco.de/docker/cicd/nexus-test:1.1.0-draft " + DIGEST + " reader",
                 "pull nexus.eitco.de/docker/cicd/nexus-test:1.1.0 null reader");
+    }
+
+    @Test
+    void prefersTheRepositoryOfTheSkill() throws Exception {
+        source().versions(NEXUS_TEST, "teams/acme/skills", "[1.0,2.0)");
+        sourceWithoutRepository().fetch(NEXUS_TEST, "teams/acme/skills", "1.1.0", PUBLISHED, null, tempDirectory);
+
+        assertThat(calls).containsExactly("tags nexus.eitco.de/teams/acme/skills/nexus-test reader",
+                "pull nexus.eitco.de/teams/acme/skills/nexus-test:1.1.0 null reader");
+    }
+
+    @Test
+    void needsARepository() {
+        assertThatThrownBy(() -> sourceWithoutRepository().versions(NEXUS_TEST, null, "[1.0,2.0)"))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("cicd/nexus-test")
+                .hasMessageContaining("oci")
+                .hasMessageContaining("<repository>");
+        assertThatThrownBy(() -> sourceWithoutRepository().fetch(NEXUS_TEST, null, "1.1.0", PUBLISHED, null,
+                tempDirectory))
+                .isInstanceOf(SkillPullException.class)
+                .hasMessageContaining("<repository>");
+        assertThat(calls).isEmpty();
     }
 }
