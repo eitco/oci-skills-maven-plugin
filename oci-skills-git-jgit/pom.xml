@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.eitco.cicd.ociskills</groupId>
+        <artifactId>oci-skills-maven-plugin-parent</artifactId>
+        <version>0.0.4-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>oci-skills-git-jgit</artifactId>
+
+    <name>oci skills git jgit</name>
+    <description>publishes skills to git repositories using JGit</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.eitco.cicd.ociskills</groupId>
+            <artifactId>oci-skills-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

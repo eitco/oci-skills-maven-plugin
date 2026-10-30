@@ -17,9 +17,10 @@ src/main/skills/<skill>/  --oci-skills:build-->  target/skill-oci/<skill>/ (OCI 
 |-----------------------------|----------------------------------------------------------------------------|
 | `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout, skill jars, installing skills and the lock file |
 | `oci-skills-registry-oras`  | `OciRegistryClient` implementation based on the ORAS java SDK - push and pull |
+| `oci-skills-git-jgit`       | `SkillRepositoryPublisher` implementation based on JGit - publishing skills to git repositories |
 | `oci-skills-maven-plugin`   | the goals and the lifecycle of the packaging `skill`                       |
 
-The core has no dependency on maven, nexus or ORAS.
+The core has no dependency on maven, nexus, ORAS or JGit.
 
 ## Usage
 
@@ -54,7 +55,7 @@ The core has no dependency on maven, nexus or ORAS.
 | `package`          | `oci-skills:build`                                                     |
 | `verify`           | `oci-skills:archive`                                                   |
 | `install`          | `maven-install-plugin:install`                                         |
-| `deploy`           | `oci-skills:push`, then `maven-deploy-plugin:deploy`                   |
+| `deploy`           | `oci-skills:push`, `oci-skills:git-deploy`, then `maven-deploy-plugin:deploy` |
 
 `oci-skills:archive` packs all skills into the [skill jar](#skill-jar) `target/<finalName>.jar`, the main artifact of
 the project - so `install` and `deploy` put the skills into maven repositories as well (type `skill`, extension
@@ -273,6 +274,41 @@ Credentials are never configured in the POM. They are taken from the `<server>` 
 ```
 
 Without `registryServerId` the push is anonymous.
+
+### Using skills with `npx skills`
+
+[`npx skills`](https://github.com/vercel-labs/skills) installs skills from git repositories. `oci-skills:git-deploy`
+publishes the built skills into such a repository - configured with `gitUrl`, otherwise the goal does nothing:
+
+```xml
+<configuration>
+    <gitUrl>https://git.example.com/ai/skills.git</gitUrl>
+    <gitServerId>my-git</gitServerId>
+</configuration>
+```
+
+On `deploy` the goal clones the branch `main`, replaces the directories `skills/<skill>/` with the files of the images -
+including the generated `skill.yaml` and the executable bits - and commits if anything changed. All other files of the
+repository are kept, so several projects can publish into the same repository. The commit is tagged with
+`<artifactId>-<version>`, so consumers can pin a release:
+
+```shell
+npx skills add https://git.example.com/ai/skills.git#acme-skills-1.2.0 --skill nexus-test   # pinned
+npx skills add https://git.example.com/ai/skills.git --skill nexus-test                     # follows main
+npx skills update                                                                           # for unpinned skills
+```
+
+On self-hosted git servers the url has to end with `.git` - otherwise `npx skills` does not take `#<tag>` as tag.
+
+* Only skills with status `published` are deployed - `<gitStatuses>` selects others.
+* Snapshots are only deployed if `gitSnapshotBranch` is configured - to that branch and without tag.
+* If the tag exists already - e.g. a release build is repeated - it is kept unchanged with a warning, and the skills are
+  committed to the branch anyway.
+* A push rejected because another build pushed in the meantime is repeated on a fresh clone, up to `gitAttempts` times.
+* The credentials are taken from the `<server>` with the id `gitServerId` in `settings.xml` - user name and password or
+  access token. Only `https` and `file` urls are supported, no ssh.
+* `-Dskill.git.skip=true` skips the goal. It is independent of `skill.push.skip`: a project publishing to git only sets
+  `-Dskill.push.skip=true`.
 
 ### Installing skills
 
@@ -577,6 +613,26 @@ mvn oci-skills:pull -Dskill.image=registry.example.com/skills/acme/nexus-test:1.
 | `skip`               | `skill.push.skip`              | `false`                                | skip the push                                        |
 
 Additional CAs are trusted in addition to the JVM defaults. TLS verification cannot be disabled.
+
+### `oci-skills:git-deploy` (default phase `deploy`)
+
+| parameter            | property                       | default                                         | description                                        |
+|----------------------|--------------------------------|-------------------------------------------------|----------------------------------------------------|
+| `skillsDirectory`    | `skill.skillsDirectory`        | `${project.basedir}/src/main/skills`            | directory with one subdirectory per skill          |
+| `outputDirectory`    | `skill.outputDirectory`        | `${project.build.directory}/skill-oci`          | the OCI image layouts created by `oci-skills:build` |
+| `gitUrl`             | `skill.git.url`                |                                                 | url of the repository - without it the goal does nothing |
+| `gitServerId`        | `skill.git.serverId`           |                                                 | id of the `<server>` in `settings.xml`             |
+| `gitBranch`          | `skill.git.branch`             | `main`                                          | branch for releases - created if missing           |
+| `gitSnapshotBranch`  | `skill.git.snapshotBranch`     |                                                 | branch for snapshots - without it snapshots are skipped |
+| `gitDirectory`       | `skill.git.directory`          | `skills`                                        | directory in the repository containing the skills  |
+| `gitTag`             | `skill.git.tag`                | `${project.artifactId}-${project.version}`      | tag of a release - empty for no tag                |
+| `gitCommitMessage`   | `skill.git.commitMessage`      | `release ${project.artifactId} ${project.version}` | message of commit and tag                       |
+| `gitStatuses`        |                                | `published`                                     | statuses of the skills to deploy                   |
+| `gitAuthorName`      | `skill.git.authorName`         | `oci-skills-maven-plugin`                       | author, committer and tagger                       |
+| `gitAuthorEmail`     | `skill.git.authorEmail`        | `oci-skills-maven-plugin@noreply.invalid`       | email of author, committer and tagger              |
+| `gitAttempts`        | `skill.git.attempts`           | `3`                                             | attempts if the branch moved in the meantime       |
+| `gitWorkDirectory`   | `skill.git.workDirectory`      | `${project.build.directory}/skill-git`          | the clone - deleted before cloning                 |
+| `skip`               | `skill.git.skip`               | `false`                                         | skip the goal                                      |
 
 ### `oci-skills:test` (default phase `test`)
 

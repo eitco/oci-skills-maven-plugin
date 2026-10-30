@@ -20,6 +20,7 @@
                             <install>org.apache.maven.plugins:maven-install-plugin:${maven.install.plugin.version}:install</install>
                             <deploy>
                                 ${project.groupId}:${project.artifactId}:${project.version}:push,
+                                ${project.groupId}:${project.artifactId}:${project.version}:git-deploy,
                                 org.apache.maven.plugins:maven-deploy-plugin:${maven.deploy.plugin.version}:deploy
                             </deploy>
                         </phases>

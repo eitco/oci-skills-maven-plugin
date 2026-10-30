@@ -36,6 +36,7 @@
     <modules>
         <module>oci-skills-core</module>
         <module>oci-skills-registry-oras</module>
+        <module>oci-skills-git-jgit</module>
         <module>oci-skills-maven-plugin</module>
     </modules>
 
@@ -43,6 +44,7 @@
         <maven.version>3.10.0</maven.version>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <oras.java.sdk.version>0.8.5</oras.java.sdk.version>
+        <jgit.version>7.5.0.202512021534-r</jgit.version>
         <junit.version>5.13.4</junit.version>
         <assertj.version>3.27.7</assertj.version>
         <!-- used by the lifecycle of the packaging skill -->
@@ -61,6 +63,16 @@
                 <groupId>de.eitco.cicd.ociskills</groupId>
                 <artifactId>oci-skills-registry-oras</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.eitco.cicd.ociskills</groupId>
+                <artifactId>oci-skills-git-jgit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit</artifactId>
+                <version>${jgit.version}</version>
             </dependency>
             <dependency>
                 <groupId>tools.jackson</groupId>

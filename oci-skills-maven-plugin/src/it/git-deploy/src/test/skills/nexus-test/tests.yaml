@@ -1,0 +1,5 @@
+tests:
+  - name: greets
+    command: [scripts/run.sh, world]
+    stdout: { matches: ["^hello, world$"] }
+    stderr: { empty: true }

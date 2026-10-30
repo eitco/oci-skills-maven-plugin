@@ -12,7 +12,7 @@ import org.apache.maven.settings.crypto.SettingsDecryptionResult;
 import java.util.stream.Collectors;
 
 /**
- * Resolves registry credentials from the {@code <servers>} of the maven settings - including encrypted passwords.
+ * Resolves registry and git credentials from the {@code <servers>} of the maven settings - including encrypted passwords.
  */
 final class RegistryCredentialsResolver {
 
@@ -34,7 +34,7 @@ final class RegistryCredentialsResolver {
         Server server = settings.getServer(serverId);
         if (server == null) {
             throw new MojoFailureException("no <server> with id '" + serverId + "' found in settings.xml - "
-                    + "configure the registry credentials there");
+                    + "configure the credentials there");
         }
         SettingsDecryptionResult result = settingsDecrypter.decrypt(new DefaultSettingsDecryptionRequest(server));
         if (result.getProblems().stream().anyMatch(problem -> problem.getSeverity() != SettingsProblem.Severity.WARNING)) {

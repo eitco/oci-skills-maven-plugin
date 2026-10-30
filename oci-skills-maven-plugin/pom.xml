@@ -28,6 +28,10 @@
             <artifactId>oci-skills-registry-oras</artifactId>
         </dependency>
         <dependency>
+            <groupId>de.eitco.cicd.ociskills</groupId>
+            <artifactId>oci-skills-git-jgit</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-plugin-api</artifactId>
             <scope>provided</scope>
