@@ -20,7 +20,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -30,12 +32,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pulls images pushed by the plugin with <a href="https://github.com/redhat-et/skillimage">skillctl</a> in the version
  * pinned by {@link SkillctlDownload} - downloaded before the first test. Skipped if the download fails, e.g. without
- * internet access, or the platform is not supported. {@code -Dskillctl.executable=<path>} uses another skillctl.
+ * internet access, or the platform is not supported - Linux, macOS and Windows on amd64 and arm64 are.
+ * {@code -Dskillctl.executable=<path>} uses another skillctl.
  */
 class SkillctlCompatibilityTest {
 
     private static final String STORE_PASSWORD = "changeit";
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
+    /**
+     * go ignores {@code SSL_CERT_FILE} on windows and only trusts the certificate store of the system - so the
+     * certificate of the test registry is not verified there
+     */
+    private static final boolean VERIFY_TLS = !System.getProperty("os.name", "").toLowerCase(Locale.ROOT)
+            .startsWith("windows");
 
     @TempDir
     Path directory;
@@ -73,7 +82,7 @@ class SkillctlCompatibilityTest {
     void pullsAndUnpacksThePushedImage() throws Exception {
         Path output = Files.createDirectories(directory.resolve("pulled"));
 
-        ExternalTool.Result result = skillctl("pull", reference().toString(), "-o", output.toString());
+        ExternalTool.Result result = pull("-o", output.toString());
 
         assertThat(result.exitCode()).as(result.output()).isZero();
         Path skill = output.resolve("nexus-test");
@@ -86,7 +95,7 @@ class SkillctlCompatibilityTest {
 
     @Test
     void readsTheSkillCardOfThePulledImage() throws Exception {
-        assertThat(skillctl("pull", reference().toString()).exitCode()).isZero();
+        assertThat(pull().exitCode()).isZero();
 
         ExternalTool.Result result = skillctl("inspect", reference().toString());
 
@@ -95,13 +104,25 @@ class SkillctlCompatibilityTest {
                 .contains("Test skill for skillctl").contains(image.manifestDescriptor().digest().toString());
     }
 
+    private ExternalTool.Result pull(String... arguments) throws IOException, InterruptedException {
+        List<String> pull = new ArrayList<>(List.of("pull", reference().toString()));
+        if (!VERIFY_TLS) {
+            pull.add("--tls-verify=false");
+        }
+        pull.addAll(List.of(arguments));
+        return skillctl(pull.toArray(String[]::new));
+    }
+
     private ExternalTool.Result skillctl(String... arguments) throws IOException, InterruptedException {
-        // skillctl keeps a local store below the home directory - keep it out of the real one
+        // skillctl keeps a local store below the home directory - keep it out of the real one, on every platform
         Path home = Files.createDirectories(directory.resolve("home"));
         Map<String, String> environment = Map.of("HOME", home.toString(), "SSL_CERT_FILE", caPem.toString(),
                 "XDG_DATA_HOME", home.resolve(".local/share").toString(),
                 "XDG_CONFIG_HOME", home.resolve(".config").toString(),
-                "XDG_CACHE_HOME", home.resolve(".cache").toString());
+                "XDG_CACHE_HOME", home.resolve(".cache").toString(),
+                "USERPROFILE", home.toString(),
+                "APPDATA", home.resolve("AppData/Roaming").toString(),
+                "LOCALAPPDATA", home.resolve("AppData/Local").toString());
         List<String> command = Stream.concat(Stream.of(skillctl.toString()), Stream.of(arguments)).toList();
         try {
             return ExternalTool.run(directory, environment, TIMEOUT, command);

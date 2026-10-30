@@ -23,8 +23,9 @@ src/main/skills/<skill>/  --oci-skills:build-->  target/skill-oci/<skill>/ (OCI 
 The core has no dependency on maven, nexus, ORAS or JGit.
 
 Compatibility with the tools consumers use is tested with the real tools: `SkillctlCompatibilityTest` pulls a pushed
-image with `skillctl` - the pinned release is downloaded from GitHub and verified against its checksum,
-`-Dskillctl.executable=<path>` uses another one. `NpxSkillsCompatibilityTest` installs skills published to git with
+image with `skillctl` - the pinned release for Linux, macOS or Windows (amd64, arm64) is downloaded from GitHub and
+verified against its checksum, `-Dskillctl.executable=<path>` uses another one. On Windows the certificate of the
+test registry is not verified, since skillctl only trusts the certificate store of the system there. `NpxSkillsCompatibilityTest` installs skills published to git with
 `npx skills` (pinned version, needs `npx`, `git` and access to the npm registry). The tests are skipped if the tools
 cannot be downloaded or are missing.
 `skillctl` 0.7 unpacks files without their executable bits - also its own images.

@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,6 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -38,7 +41,9 @@ final class SkillctlDownload {
             "linux_amd64", "8906ac98877747caf8fc10910884a40f2e287d68303f706440603a81b0cc33d9",
             "linux_arm64", "3143ec2012414b28a6fe4d98bfb099df45ab57d421cefa661dbebebdfe8e0dfb",
             "darwin_amd64", "c7e10d919d7a5b9ae68061429a7170c6250ceba81c42ccc9d3fe264dd90d8230",
-            "darwin_arm64", "e8d04cdba4af5052fe9fb3886e7b5bfb043c7a81642bd9b1d40c4a1e60ddb17e");
+            "darwin_arm64", "e8d04cdba4af5052fe9fb3886e7b5bfb043c7a81642bd9b1d40c4a1e60ddb17e",
+            "windows_amd64", "89fb9b817052b345f6b066d25a82941c0ba3eb653135100a1438bd471690cc78",
+            "windows_arm64", "f29593615a0810091eb1c80e9892800ab1743731a1074d8c80952808290e8ccf");
 
     /**
      * the base url of the release - can be replaced with the system property {@code skillctl.downloadUrl}, e.g. by a
@@ -66,11 +71,12 @@ final class SkillctlDownload {
         Optional<String> platform = platform(System.getProperty("os.name"), System.getProperty("os.arch"));
         assumeTrue(platform.isPresent(), () -> "skillctl " + VERSION + " is not available for "
                 + System.getProperty("os.name") + " " + System.getProperty("os.arch"));
-        Path executable = DIRECTORY.resolve("skillctl").toAbsolutePath();
+        boolean windows = platform.get().startsWith("windows");
+        Path executable = DIRECTORY.resolve(windows ? "skillctl.exe" : "skillctl").toAbsolutePath();
         if (Files.isExecutable(executable)) {
             return executable;
         }
-        String asset = "skillctl_" + VERSION + "_" + platform.get() + ".tar.gz";
+        String asset = "skillctl_" + VERSION + "_" + platform.get() + (windows ? ".zip" : ".tar.gz");
         URI archive = URI.create(System.getProperty("skillctl.downloadUrl", DOWNLOAD_URL) + "/" + asset);
         try {
             install(archive, SHA256.get(platform.get()), executable);
@@ -85,7 +91,8 @@ final class SkillctlDownload {
      */
     static Optional<String> platform(String osName, String osArch) {
         String name = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
-        String os = name.startsWith("linux") ? "linux" : name.startsWith("mac") ? "darwin" : null;
+        String os = name.startsWith("linux") ? "linux" : name.startsWith("mac") ? "darwin"
+                : name.startsWith("windows") ? "windows" : null;
         String arch = switch (osArch == null ? "" : osArch.toLowerCase(Locale.ROOT)) {
             case "amd64", "x86_64" -> "amd64";
             case "aarch64", "arm64" -> "arm64";
@@ -95,10 +102,12 @@ final class SkillctlDownload {
     }
 
     /**
-     * Downloads the archive, verifies its checksum and extracts {@code skillctl} from it. The executable is moved to
-     * its place as last step, so it is either complete or missing.
+     * Downloads the archive, verifies its checksum and extracts the entry named like {@code executable} from it -
+     * {@code skillctl} or {@code skillctl.exe}. The executable is moved to its place as last step, so it is either
+     * complete or missing.
      *
-     * @param archive    the url of the {@code tar.gz} archive - {@code https} or {@code file}
+     * @param archive    the url of the archive - {@code https} or {@code file}, a {@code zip} if its name ends with
+     *                   {@code .zip}, a {@code tar.gz} otherwise
      * @param sha256     the expected checksum of the archive, hex encoded
      * @param executable the file to write the executable to
      * @throws IOException           if downloading fails
@@ -115,8 +124,16 @@ final class SkillctlDownload {
                 throw new IllegalStateException("the checksum of " + archive + " is " + actual + " instead of "
                         + sha256 + " - the download is not the expected release");
             }
-            extract(download, extracted);
-            Files.setPosixFilePermissions(extracted, PosixFilePermissions.fromString("rwxr-xr-x"));
+            String name = executable.getFileName().toString();
+            if (archive.getPath().endsWith(".zip")) {
+                extractZip(download, name, extracted);
+            } else {
+                extractTarGz(download, name, extracted);
+            }
+            // windows has no executable bits - every .exe is executable there
+            if (Files.getFileAttributeView(extracted, PosixFileAttributeView.class) != null) {
+                Files.setPosixFilePermissions(extracted, PosixFilePermissions.fromString("rwxr-xr-x"));
+            }
             Files.move(extracted, executable, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(download);
@@ -145,17 +162,29 @@ final class SkillctlDownload {
         }
     }
 
-    private static void extract(Path archive, Path target) throws IOException {
+    private static void extractTarGz(Path archive, String name, Path target) throws IOException {
         try (InputStream file = Files.newInputStream(archive);
              TarArchiveInputStream tar = new TarArchiveInputStream(new GZIPInputStream(new BufferedInputStream(file)))) {
             for (TarArchiveEntry entry = tar.getNextEntry(); entry != null; entry = tar.getNextEntry()) {
-                if (entry.isFile() && entry.getName().equals("skillctl")) {
+                if (entry.isFile() && entry.getName().equals(name)) {
                     Files.copy(tar, target, StandardCopyOption.REPLACE_EXISTING);
                     return;
                 }
             }
         }
-        throw new IllegalStateException("the archive contains no skillctl");
+        throw new IllegalStateException("the archive contains no " + name);
+    }
+
+    private static void extractZip(Path archive, String name, Path target) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(new BufferedInputStream(Files.newInputStream(archive)))) {
+            for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+                if (!entry.isDirectory() && entry.getName().equals(name)) {
+                    Files.copy(zip, target, StandardCopyOption.REPLACE_EXISTING);
+                    return;
+                }
+            }
+        }
+        throw new IllegalStateException("the archive contains no " + name);
     }
 
     private static String sha256(Path file) throws IOException {
