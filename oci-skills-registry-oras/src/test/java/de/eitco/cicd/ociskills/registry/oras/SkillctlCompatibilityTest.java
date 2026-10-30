@@ -26,11 +26,11 @@ import java.util.TreeMap;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Pulls images pushed by the plugin with <a href="https://github.com/redhat-et/skillimage">skillctl</a>. Skipped if
- * {@code skillctl} is not on the {@code PATH}.
+ * Pulls images pushed by the plugin with <a href="https://github.com/redhat-et/skillimage">skillctl</a> in the version
+ * pinned by {@link SkillctlDownload} - downloaded before the first test. Skipped if the download fails, e.g. without
+ * internet access, or the platform is not supported. {@code -Dskillctl.executable=<path>} uses another skillctl.
  */
 class SkillctlCompatibilityTest {
 
@@ -47,8 +47,7 @@ class SkillctlCompatibilityTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        skillctl = ExternalTool.find("skillctl").orElse(null);
-        assumeTrue(skillctl != null, "skillctl not found on PATH");
+        skillctl = SkillctlDownload.executable();
         // skillctl talks TLS to every registry - a plain http registry is not supported
         Path serverKeyStore = directory.resolve("server.p12");
         caPem = directory.resolve("ca.pem");
