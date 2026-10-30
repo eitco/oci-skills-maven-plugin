@@ -51,7 +51,7 @@ class OrasRegistryClientTlsTest {
                 "-keystore", trustStore.toString(), "-storetype", "PKCS12", "-storepass", STORE_PASSWORD);
     }
 
-    private static void keytool(String... arguments) throws Exception {
+    static void keytool(String... arguments) throws Exception {
         List<String> command = new java.util.ArrayList<>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "keytool").toString());
         command.addAll(List.of(arguments));
