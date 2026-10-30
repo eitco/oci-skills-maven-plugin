@@ -2,6 +2,9 @@ package de.eitco.cicd.ociskills.core.install;
 
 import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.TestSkills;
+import de.eitco.cicd.ociskills.core.archive.SkillJar;
+import de.eitco.cicd.ociskills.core.archive.SkillJarReader;
+import de.eitco.cicd.ociskills.core.archive.SkillJarWriter;
 import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +50,25 @@ class SkillInstallerTest {
         assertThat(skill.resolve(SkillInstaller.ORIGIN_FILE)).exists();
         assertThat(installer.installed()).containsExactly(
                 Map.entry("nexus-test", origin(image, "nexus-test", "1.0.0")));
+    }
+
+    @Test
+    void installsASkillJar() throws Exception {
+        OciImageLayout layout = image("nexus-test", "1.0.0", Map.of("scripts/run.sh", "#!/bin/sh\n"));
+        Path jar = tempDirectory.resolve("nexus-test.jar");
+        new SkillJarWriter().write(List.of(layout), jar);
+        SkillJar image = new SkillJarReader().read(jar, tempDirectory.resolve("work"));
+        SkillInstaller installer = new SkillInstaller(skills());
+
+        installer.install(image, origin(layout, "nexus-test", "1.0.0"));
+
+        Path skill = skills().resolve("nexus-test");
+        assertThat(skill.resolve("SKILL.md")).content().contains("name: nexus-test", "version: 1.0.0");
+        assertThat(skill.resolve("skill.yaml")).exists();
+        assertThat(Files.isExecutable(skill.resolve("scripts/run.sh"))).isTrue();
+        assertThat(skill.resolve(SkillInstaller.ORIGIN_FILE)).exists();
+        assertThat(installer.installed()).containsExactly(
+                Map.entry("nexus-test", origin(layout, "nexus-test", "1.0.0")));
     }
 
     @Test

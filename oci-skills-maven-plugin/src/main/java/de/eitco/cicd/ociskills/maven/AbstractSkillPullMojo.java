@@ -136,6 +136,8 @@ abstract class AbstractSkillPullMojo extends AbstractMojo {
             case SkillSourceConfiguration.MAVEN -> new MavenSkillSource(source.getId(),
                     new SourceTemplate("groupId", source.getGroupId()),
                     new SourceTemplate("artifactId", source.getArtifactId()),
+                    new SourceTemplate("classifier", source.getClassifier() == null ? "{name}"
+                            : source.getClassifier()),
                     repositorySystem, repositorySession(), remoteRepositories());
             case SkillSourceConfiguration.OCI -> {
                 if (source.getRegistry() == null || source.getRegistry().isBlank()) {

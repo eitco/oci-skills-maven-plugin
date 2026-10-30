@@ -3,7 +3,7 @@ package de.eitco.cicd.ociskills.maven;
 import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.install.SkillOrigin;
-import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
+import de.eitco.cicd.ociskills.core.layout.SkillImage;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 
 import java.io.IOException;
@@ -33,7 +33,7 @@ final class SkillResolver {
     }
 
     /**
-     * @param directory a directory to write fetched layouts to
+     * @param directory a directory to write fetched images to
      */
     Resolved resolve(SkillRequest request, Path directory) throws SkillPullException {
         SkillId id = request.id();
@@ -45,7 +45,7 @@ final class SkillResolver {
                     .toList();
             for (String version : versions) {
                 for (SkillStatus status : accepted) {
-                    Optional<OciImageLayout> image = source.fetch(id, request.repository(), version, status, null,
+                    Optional<SkillImage> image = source.fetch(id, request.repository(), version, status, null,
                             newDirectory(directory));
                     if (image.isPresent()) {
                         return new Resolved(new SkillOrigin(id, version, status,
@@ -61,14 +61,14 @@ final class SkillResolver {
 
     /**
      * @param request   the request the skill was locked for
-     * @param directory a directory to write fetched layouts to
-     * @return the layout of the locked skill - a source delivering another digest is an error
+     * @param directory a directory to write fetched images to
+     * @return the image of the locked skill - a source delivering another digest is an error
      */
     Fetched fetch(SkillOrigin locked, SkillRequest request, Path directory) throws SkillPullException {
         List<SkillSource> candidates = new ArrayList<>(sources(request.source()));
         candidates.sort(Comparator.comparing(source -> !source.id().equals(locked.source())));
         for (SkillSource source : candidates) {
-            Optional<OciImageLayout> image = source.fetch(locked.id(), request.repository(), locked.version(),
+            Optional<SkillImage> image = source.fetch(locked.id(), request.repository(), locked.version(),
                     locked.status(), locked.digest(), newDirectory(directory));
             if (image.isPresent()) {
                 if (!image.get().manifestDescriptor().digest().equals(locked.digest())) {
@@ -121,15 +121,15 @@ final class SkillResolver {
 
     /**
      * @param origin the resolved skill
-     * @param image  its layout
+     * @param image  its image
      */
-    record Resolved(SkillOrigin origin, OciImageLayout image) {
+    record Resolved(SkillOrigin origin, SkillImage image) {
     }
 
     /**
      * @param source the id of the source that delivered the image
-     * @param image  the layout
+     * @param image  the image
      */
-    record Fetched(String source, OciImageLayout image) {
+    record Fetched(String source, SkillImage image) {
     }
 }

@@ -39,6 +39,14 @@
                             <groupId>de.eitco.cicd.{repository.parent}</groupId>
                             <artifactId>{repository.last}</artifactId>
                         </source>
+                        <source>
+                            <id>it-maven-solo</id>
+                            <type>maven</type>
+                            <!-- cicd/solo-epsilon -> the main artifact de.eitco.cicd.it:epsilon -->
+                            <groupId>de.eitco.cicd.it</groupId>
+                            <artifactId>{name[1:]}</artifactId>
+                            <classifier>{name[:0]}</classifier>
+                        </source>
                     </sources>
                     <skills>
                         <skill>
@@ -51,6 +59,11 @@
                             <version>1.0.0</version>
                             <repository>it/cicd-skills</repository>
                             <status>draft</status>
+                        </skill>
+                        <skill>
+                            <id>cicd/solo-epsilon</id>
+                            <version>1.0.0</version>
+                            <source>it-maven-solo</source>
                         </skill>
                     </skills>
                 </configuration>

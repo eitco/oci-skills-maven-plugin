@@ -3,6 +3,7 @@ package de.eitco.cicd.ociskills.maven;
 import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
+import de.eitco.cicd.ociskills.core.layout.SkillImage;
 import de.eitco.cicd.ociskills.core.oci.Digest;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 
@@ -82,8 +83,8 @@ final class FakeSkillSource implements SkillSource {
     }
 
     @Override
-    public Optional<OciImageLayout> fetch(SkillId skill, String repository, String version, SkillStatus status,
-                                          Digest digest, Path target) throws SkillPullException {
+    public Optional<SkillImage> fetch(SkillId skill, String repository, String version, SkillStatus status,
+                                      Digest digest, Path target) throws SkillPullException {
         place(skill, repository);
         fetches.add(skill + ":" + version + ":" + status.value());
         return Optional.ofNullable(images.get(new Key(skill, version, status)));

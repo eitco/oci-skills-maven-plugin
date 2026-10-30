@@ -4,6 +4,7 @@ import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipFile
 
 File layout = new File(basedir, "target/skill-oci/nexus-test")
 File blobs = new File(layout, "blobs/sha256")
@@ -99,6 +100,30 @@ def config = json.parse(new File(blobs, manifest.config.digest.substring(7)))
 assert config.architecture == "amd64"
 assert config.os == "linux"
 assert config.rootfs.diff_ids.size() == 1
+
+// the skill is archived as jar: the files below the skill name, manifest and config byte for byte
+def jarEntries = { File file ->
+    new ZipFile(file).withCloseable { zip -> zip.entries().toList().collectEntries { [(it.name): zip.getInputStream(it).bytes] } }
+}
+File skillJar = new File(basedir, "target/build-skill-1.0.0-nexus-test.jar")
+def jar = jarEntries(skillJar)
+assert jar.keySet() as List == [
+        "META-INF/oci-skills/nexus-test/config.json",
+        "META-INF/oci-skills/nexus-test/manifest.json",
+        "nexus-test/",
+        "nexus-test/SKILL.md",
+        "nexus-test/references/",
+        "nexus-test/references/guide.md",
+        "nexus-test/scripts/",
+        "nexus-test/scripts/run.sh",
+        "nexus-test/skill.yaml",
+]
+assert jar["META-INF/oci-skills/nexus-test/manifest.json"] == manifestFile.bytes
+assert jar["META-INF/oci-skills/nexus-test/config.json"] == new File(blobs, manifest.config.digest.substring(7)).bytes
+assert new String(jar["nexus-test/SKILL.md"], "UTF-8") == skillMd.text
+// without packaging skill, the jar of all skills is attached with classifier skills
+assert jarEntries(new File(basedir, "target/build-skill-1.0.0.jar")).keySet() == jar.keySet()
+assert !new File(basedir, "target/build-skill-1.0.0.tar").exists()
 
 String log = new File(basedir, "build.log").text
 assert log.contains("nexus-test:1.0.0 (published)")

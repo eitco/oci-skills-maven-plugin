@@ -2,8 +2,7 @@ package de.eitco.cicd.ociskills.core.install;
 
 import de.eitco.cicd.ociskills.core.SkillBuildException;
 import de.eitco.cicd.ociskills.core.SkillPullException;
-import de.eitco.cicd.ociskills.core.layer.TarExtractor;
-import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
+import de.eitco.cicd.ociskills.core.layout.SkillImage;
 import de.eitco.cicd.ociskills.core.oci.Digest;
 import de.eitco.cicd.ociskills.core.oci.ImageManifestBuilder;
 import de.eitco.cicd.ociskills.core.oci.MediaTypes;
@@ -13,9 +12,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
-import java.util.zip.GZIPInputStream;
 
 /**
  * Installs skill images into a directory like {@code .claude/skills} - one subdirectory per skill, named like the
@@ -68,13 +64,13 @@ public class SkillInstaller {
     }
 
     /**
-     * Extracts the layer of the image into the directory of the skill, replacing a previously installed version.
+     * Extracts the files of the image into the directory of the skill, replacing a previously installed version.
      * The directory contains a {@value #GITIGNORE_FILE} ignoring it in git.
      *
      * @throws SkillPullException if the image is not the skill of the origin or the directory exists, but is not
      *                            installed by the plugin
      */
-    public void install(OciImageLayout image, SkillOrigin origin) throws SkillPullException {
+    public void install(SkillImage image, SkillOrigin origin) throws SkillPullException {
         Map<String, String> annotations = image.manifest().annotations() == null ? Map.of()
                 : image.manifest().annotations();
         String imageId = annotations.get(ImageManifestBuilder.ANNOTATION_VENDOR) + "/"
@@ -97,10 +93,7 @@ public class SkillInstaller {
         Path staging = directory.resolve("." + name + ".installing");
         try {
             delete(staging);
-            try (InputStream layer = new GZIPInputStream(new BufferedInputStream(
-                    Files.newInputStream(image.blob(layers.get(0)))))) {
-                new TarExtractor().extract(layer, staging);
-            }
+            image.extract(staging);
             writeOrigin(staging.resolve(ORIGIN_FILE), origin);
             Files.write(staging.resolve(GITIGNORE_FILE), GITIGNORE);
             delete(target);

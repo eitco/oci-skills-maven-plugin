@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Builds skill images to install in tests.
  */
-final class TestImages {
+public final class TestImages {
 
     private TestImages() {
     }
@@ -25,7 +25,7 @@ final class TestImages {
     /**
      * @param files the files of the skill besides {@code SKILL.md} - {@code scripts/**} are executable
      */
-    static OciImageLayout build(Path directory, String namespace, String name, String version,
+    public static OciImageLayout build(Path directory, String namespace, String name, String version,
                                 Map<String, String> files) throws Exception {
         Path skill = directory.resolve("src").resolve(name);
         TestSkills.write(skill, "SKILL.md", """

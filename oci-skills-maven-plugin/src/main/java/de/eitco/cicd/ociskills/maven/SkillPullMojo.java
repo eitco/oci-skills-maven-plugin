@@ -5,6 +5,7 @@ import de.eitco.cicd.ociskills.core.install.SkillId;
 import de.eitco.cicd.ociskills.core.install.SkillInstaller;
 import de.eitco.cicd.ociskills.core.install.SkillOrigin;
 import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
+import de.eitco.cicd.ociskills.core.layout.SkillImage;
 import de.eitco.cicd.ociskills.core.oci.Digest;
 import de.eitco.cicd.ociskills.core.oci.ImageManifestBuilder;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
@@ -70,7 +71,8 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
 
     /**
      * The skill artifact attached by {@code oci-skills:archive}:
-     * {@code <groupId>:<artifactId>:<version>:<classifier>}.
+     * {@code <groupId>:<artifactId>:<version>:<classifier>}, or {@code <groupId>:<artifactId>:<version>} for the
+     * main artifact of a project with a single skill.
      */
     @Parameter(property = "skill.artifact")
     private String artifact;
@@ -104,7 +106,7 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
         long selected = Stream.of(skill, artifact, image).filter(value -> value != null && !value.isBlank()).count();
         if (selected != 1) {
             throw new MojoFailureException("set exactly one of -Dskill=<namespace>/<name>[:<version>], "
-                    + "-Dskill.artifact=<groupId>:<artifactId>:<version>:<classifier> or "
+                    + "-Dskill.artifact=<groupId>:<artifactId>:<version>[:<classifier>] or "
                     + "-Dskill.image=<registry>/<repository>:<tag>");
         }
         Path workDirectory;
@@ -157,16 +159,16 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
 
     private Pulled pullArtifact(Path workDirectory) throws MojoFailureException, SkillPullException {
         String[] parts = artifact.trim().split(":");
-        if (parts.length != 4 || Stream.of(parts).anyMatch(String::isBlank)) {
+        if (parts.length < 3 || parts.length > 4 || Stream.of(parts).anyMatch(String::isBlank)) {
             throw new MojoFailureException("invalid -Dskill.artifact=" + artifact
-                    + " - expected <groupId>:<artifactId>:<version>:<classifier>");
+                    + " - expected <groupId>:<artifactId>:<version>[:<classifier>]");
         }
-        DefaultArtifact coordinates = new DefaultArtifact(parts[0], parts[1], parts[3], MavenSkillSource.EXTENSION,
-                parts[2]);
-        OciImageLayout layout = MavenSkillSource.fetch(repositorySystem(), repositorySession(),
+        DefaultArtifact coordinates = new DefaultArtifact(parts[0], parts[1], parts.length == 4 ? parts[3] : "",
+                MavenSkillSource.EXTENSION, parts[2]);
+        SkillImage skillImage = MavenSkillSource.fetch(repositorySystem(), repositorySession(),
                 remoteRepositories(), coordinates, workDirectory).orElseThrow(() -> new SkillPullException(
                 coordinates + " was not found in the repositories of the build"));
-        return new Pulled(origin(layout, coordinates.toString()), layout);
+        return new Pulled(origin(skillImage, coordinates.toString()), skillImage);
     }
 
     private Pulled pullImage(Path workDirectory) throws MojoFailureException, SkillPullException {
@@ -204,14 +206,14 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
     /**
      * @return the origin according to the annotations of the image
      */
-    private static SkillOrigin origin(OciImageLayout layout, String source) throws SkillPullException {
-        Map<String, String> annotations = Optional.ofNullable(layout.manifest().annotations()).orElse(Map.of());
+    private static SkillOrigin origin(SkillImage skillImage, String source) throws SkillPullException {
+        Map<String, String> annotations = Optional.ofNullable(skillImage.manifest().annotations()).orElse(Map.of());
         try {
             return new SkillOrigin(new SkillId(annotations.get(ImageManifestBuilder.ANNOTATION_VENDOR),
                     annotations.get(ImageManifestBuilder.ANNOTATION_TITLE)),
                     annotations.get(ImageManifestBuilder.ANNOTATION_VERSION),
                     SkillStatus.parse(annotations.get(SkillStatus.ANNOTATION)),
-                    layout.manifestDescriptor().digest(), source);
+                    skillImage.manifestDescriptor().digest(), source);
         } catch (IllegalArgumentException e) {
             throw new SkillPullException(source + " is no skill image built by the plugin: " + e.getMessage(), e);
         }
@@ -227,6 +229,6 @@ public class SkillPullMojo extends AbstractSkillPullMojo {
         }
     }
 
-    private record Pulled(SkillOrigin origin, OciImageLayout image) {
+    private record Pulled(SkillOrigin origin, SkillImage image) {
     }
 }

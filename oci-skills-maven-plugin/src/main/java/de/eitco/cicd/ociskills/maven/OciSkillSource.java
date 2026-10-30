@@ -2,7 +2,7 @@ package de.eitco.cicd.ociskills.maven;
 
 import de.eitco.cicd.ociskills.core.SkillPullException;
 import de.eitco.cicd.ociskills.core.install.SkillId;
-import de.eitco.cicd.ociskills.core.layout.OciImageLayout;
+import de.eitco.cicd.ociskills.core.layout.SkillImage;
 import de.eitco.cicd.ociskills.core.oci.Digest;
 import de.eitco.cicd.ociskills.core.oci.SkillStatus;
 import de.eitco.cicd.ociskills.core.oci.StatusSuffix;
@@ -55,10 +55,10 @@ final class OciSkillSource implements SkillSource {
     }
 
     @Override
-    public Optional<OciImageLayout> fetch(SkillId skill, String repository, String version, SkillStatus status,
-                                          Digest digest, Path directory) throws SkillPullException {
+    public Optional<SkillImage> fetch(SkillId skill, String repository, String version, SkillStatus status,
+                                      Digest digest, Path directory) throws SkillPullException {
         return client.pull(reference(skill, repository, StatusSuffix.append(version, status)), digest, directory,
-                credentials);
+                credentials).map(SkillImage.class::cast);
     }
 
     private OciReference reference(SkillId skill, String repository, String tag) throws SkillPullException {

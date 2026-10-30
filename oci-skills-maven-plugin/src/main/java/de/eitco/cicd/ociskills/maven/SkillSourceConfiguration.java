@@ -4,13 +4,15 @@ import java.io.File;
 import java.util.List;
 
 /**
- * The configuration of a {@code <source>} skills are pulled from. {@code groupId}, {@code artifactId} and
- * {@code repository} may contain the placeholders {@code {namespace}} and {@code {name}} of the skill as well as
- * {@code {repository}}, {@code {repository.parent}} and {@code {repository.last}} derived from its
+ * The configuration of a {@code <source>} skills are pulled from. {@code groupId}, {@code artifactId},
+ * {@code classifier} and {@code repository} may contain the placeholders {@code {namespace}} and {@code {name}} of
+ * the skill, parts of them like {@code {name[0]}} or {@code {name[1:]}}, as well as {@code {repository}},
+ * {@code {repository[…]}}, {@code {repository.parent}} and {@code {repository.last}} derived from its
  * {@code <repository>} - see {@link SourceTemplate}.
  * <ul>
- *     <li>{@code maven}: the skill is the artifact {@code <groupId>:<artifactId>:tar:<classifier>} attached by
- *     {@code oci-skills:archive}. The repositories of the project are used.</li>
+ *     <li>{@code maven}: the skill is the artifact {@code <groupId>:<artifactId>:jar:<classifier>} attached by
+ *     {@code oci-skills:archive} - or the main artifact if the classifier expands to an empty value. The
+ *     repositories of the project are used.</li>
  *     <li>{@code oci}: the skill is the image {@code <registry>/<repository>/<name>} pushed by
  *     {@code oci-skills:push} - the {@code <repository>} of the skill, if it has one.</li>
  * </ul>
@@ -39,6 +41,13 @@ public class SkillSourceConfiguration {
      * {@code maven} only: the artifact id of the artifact, e.g. {@code {repository.last}}.
      */
     private String artifactId;
+
+    /**
+     * {@code maven} only: the classifier of the artifact, suffixed with the status unless the status is
+     * {@code published} - defaults to {@code {name}}, like {@code oci-skills:archive} attaches skills. If it expands
+     * to an empty value, e.g. {@code {name[:0]}}, the main artifact of the project is used.
+     */
+    private String classifier;
 
     /**
      * {@code oci} only: the registry host, optionally with port, e.g. {@code registry.example.com}.
@@ -85,6 +94,10 @@ public class SkillSourceConfiguration {
         return artifactId;
     }
 
+    String getClassifier() {
+        return classifier;
+    }
+
     String getRegistry() {
         return registry;
     }
@@ -103,5 +116,13 @@ public class SkillSourceConfiguration {
 
     boolean isAllowPlainHttp() {
         return allowPlainHttp;
+    }
+
+    @Override
+    public String toString() {
+        return "SkillSourceConfiguration[id=" + id + ", type=" + type + ", groupId=" + groupId + ", artifactId="
+                + artifactId + ", classifier=" + classifier + ", registry=" + registry + ", repository=" + repository + ", registryServerId="
+                + registryServerId + ", caCertificates=" + caCertificates + ", allowPlainHttp=" + allowPlainHttp
+                + "]";
     }
 }

@@ -15,7 +15,7 @@ src/main/skills/<skill>/  --oci-skills:build-->  target/skill-oci/<skill>/ (OCI 
 
 | module                      | content                                                                    |
 |-----------------------------|----------------------------------------------------------------------------|
-| `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout, installing skills and the lock file |
+| `oci-skills-core`           | SkillCard validation, deterministic tar layer, OCI config/manifest/layout, skill jars, installing skills and the lock file |
 | `oci-skills-registry-oras`  | `OciRegistryClient` implementation based on the ORAS java SDK - push and pull |
 | `oci-skills-maven-plugin`   | the goals and the lifecycle of the packaging `skill`                       |
 
@@ -56,11 +56,15 @@ The core has no dependency on maven, nexus or ORAS.
 | `install`          | `maven-install-plugin:install`                                         |
 | `deploy`           | `oci-skills:push`, then `maven-deploy-plugin:deploy`                   |
 
-`oci-skills:archive` packs the OCI image layouts of all skills into `target/<finalName>.tar`, the main artifact of the
-project - so `install` and `deploy` put the skills into maven repositories as well (type `skill`). Every skill is
-attached on its own as well (type `tar`), so it can be [installed](#installing-skills) by other projects - its
-classifier is the skill name, suffixed like the tag, e.g. `nexus-test` or `nexus-test-draft`. Local `mvn install`
-calls never push, since the push is bound to `deploy`. `-Dskill.push.skip=true` skips the push in any case.
+`oci-skills:archive` packs all skills into the [skill jar](#skill-jar) `target/<finalName>.jar`, the main artifact of
+the project - so `install` and `deploy` put the skills into maven repositories as well (type `skill`, extension
+`jar`). Every skill is attached on its own as well (type `jar`), so it can be [installed](#installing-skills) by other
+projects - its classifier is the skill name, suffixed like the tag, e.g. `nexus-test` or `nexus-test-draft`. Local
+`mvn install` calls never push, since the push is bound to `deploy`. `-Dskill.push.skip=true` skips the push in any
+case.
+
+> **Changed in 0.0.3:** up to 0.0.2 the main artifact was a tar file containing the OCI image layouts. It is a jar
+> with the skill files now - artifacts of 0.0.2 cannot be installed with `oci-skills:sync` or `oci-skills:pull`.
 
 ### Status
 
@@ -149,6 +153,9 @@ The goals can be bound in any project as well:
     </plugins>
 </build>
 ```
+
+Bound in such a project, `oci-skills:archive` attaches the jar of all skills with classifier `skills` and every skill
+with its own classifier, like with packaging `skill`.
 
 ### Skill directories
 
@@ -322,27 +329,109 @@ covers a whole registry or maven repository. Every source maps it to its own coo
 
 | `type`  | the skill is                                                             | as created by        |
 |---------|--------------------------------------------------------------------------|----------------------|
-| `maven` | the artifact `<groupId>:<artifactId>:tar:<name>[-<status>]:<version>`    | `oci-skills:archive` |
+| `maven` | the artifact `<groupId>:<artifactId>:jar:<classifier>[-<status>]:<version>` | `oci-skills:archive` |
 | `oci`   | the image `<registry>/<repository>/<name>:<version>[-<status>]`          | `oci-skills:push`    |
 
-For OCI sources the `<repository>` of the skill is used as it is. `groupId` and `artifactId` of maven sources - and
-the `<repository>` of OCI sources, which is used for skills without `<repository>` - are templates with these
-placeholders, shown for `acme/nexus-test` with the repository `teams/acme/skills`:
+For OCI sources the `<repository>` of the skill is used as it is. `groupId`, `artifactId` and `classifier` of maven
+sources - and the `<repository>` of OCI sources, which is used for skills without `<repository>` - are templates with
+these placeholders, shown for `acme/nexus-admin-test` with the repository `teams/acme/skills`:
 
-| placeholder           | value                | from                                          |
-|-----------------------|----------------------|-----------------------------------------------|
-| `{namespace}`         | `acme`               | the skill id                                  |
-| `{name}`              | `nexus-test`         | the skill id                                  |
-| `{repository}`        | `teams.acme.skills`  | the repository, `/` replaced by `.`           |
-| `{repository.parent}` | `teams.acme`         | the repository without its last segment       |
-| `{repository.last}`   | `skills`             | the last segment of the repository            |
+| placeholder                              | value                       | from                                     |
+|------------------------------------------|-----------------------------|------------------------------------------|
+| `{namespace}`                            | `acme`                      | the skill id                             |
+| `{name}`                                 | `nexus-admin-test`          | the skill id                             |
+| `{name[0]}`, `{name[1]}`, `{name[-1]}`   | `nexus`, `admin`, `test`    | a single part of the name                |
+| `{name[1:]}`                             | `admin-test`                | the name without its first part          |
+| `{name[:-1]}`                            | `nexus-admin`               | the name without its last part           |
+| `{name[0:2]}`                            | `nexus-admin`               | the parts 0 and 1 of the name            |
+| `{name[:0]}`                             | empty                       | no part at all                           |
+| `{namespace[…]}`                         |                             | parts of the namespace, like `{name[…]}` |
+| `{repository}`                           | `teams.acme.skills`         | the repository, `/` replaced by `.`      |
+| `{repository[1:]}`                       | `acme.skills`               | parts of the repository, like `{name[…]}`|
+| `{repository.parent}`, `{repository[:-1]}` | `teams.acme`              | the repository without its last segment  |
+| `{repository.last}`, `{repository[-1]}`  | `skills`                    | the last segment of the repository       |
 
-With the example above `acme/nexus-test` is the artifact `com.example.teams.acme:skills:tar:nexus-test` and the image
-`registry.example.com/teams/acme/skills/nexus-test`. If a repository placeholder is used, repeated dots and dots at
-the start or end of the value are dropped - `com.example.{repository.parent}` with the repository `skills` is
-`com.example`. A source that cannot locate a skill fails the build - e.g. a template with a repository placeholder
-for a skill without `<repository>`, or an OCI source without `<repository>`. Pin such skills to another source with
-`<source>`.
+Namespace and name are split into parts at `-` and joined with `-`, the repository is split at `/` and joined with
+`.`. Indices start at 0, negative indices count from the end, the end of a slice `[from:to]` is exclusive and both
+bounds may be omitted - like in Python. A single index that does not exist fails, slices are cut to the existing
+parts and may be empty. Repeated dots as well as dots and dashes at the start or end of the value are dropped -
+`com.example.{repository.parent}` with the repository `skills` is `com.example`, `skills-{name[1:]}` for the skill
+`acme/solo` is `skills`.
+
+`classifier` defaults to `{name}`, the classifier `oci-skills:archive` attaches a skill with. Unless the status is
+`published` it is suffixed with the status, like the tag of an image. With the example above `acme/nexus-admin-test`
+is the artifact `com.example.teams.acme:skills:jar:nexus-admin-test` and the image
+`registry.example.com/teams/acme/skills/nexus-admin-test`. A source that cannot locate a skill fails the build - e.g.
+a template with a repository placeholder for a skill without `<repository>`, a `groupId` or `artifactId` expanding to
+an empty value, or an OCI source without `<repository>`. Pin such skills to another source with `<source>`.
+
+Different layouts are covered by splitting the name - the skill `acme/tools-delta` as `com.example.acme:tools:jar:delta`:
+
+```xml
+<source>
+    <id>my-tools</id>
+    <type>maven</type>
+    <groupId>com.example.{namespace}</groupId>
+    <artifactId>{name[0]}</artifactId>
+    <classifier>{name[1:]}</classifier>
+</source>
+```
+
+**One skill per project.** With packaging `skill` the main artifact of a project contains all of its skills - with a
+single skill it can be pulled like the attached jar. A classifier expanding to an empty value selects the main
+artifact; since `<classifier/>` is no value in maven, write `{name[:0]}`. The main artifact has no status in its
+coordinates: it is taken only if the skill in it has the requested status. The skill `acme/solo-epsilon` as the main
+artifact `com.example.acme:epsilon:jar`:
+
+```xml
+<source>
+    <id>my-projects</id>
+    <type>maven</type>
+    <groupId>com.example.{namespace}</groupId>
+    <artifactId>{name[1:]}</artifactId>
+    <classifier>{name[:0]}</classifier>
+</source>
+```
+
+**Default repository.** There is no plugin parameter for it - two ways cover it:
+
+* *Per source*: skills without `<repository>` are located by the templates of the source alone, so these are the
+  default of the source. A template without repository placeholders needs no `<repository>` - a fixed repository
+  would only expand to fixed values, so write them into the template directly:
+
+  ```xml
+  <source>
+      <id>my-registry</id>
+      <type>oci</type>
+      <registry>registry.example.com</registry>
+      <repository>teams/{namespace}/skills</repository>
+  </source>
+  <source>
+      <id>my-maven</id>
+      <type>maven</type>
+      <groupId>com.example.{namespace}</groupId>
+      <artifactId>skills</artifactId>
+  </source>
+  ```
+
+* *For all skills*: a property - which may be inherited from a parent POM - used as `<repository>` of every skill.
+  Each source maps it to its own coordinates. Changing it resolves the skills again, as it is part of `requested`
+  in the lock file:
+
+  ```xml
+  <properties>
+      <skills.repository>teams/acme/skills</skills.repository>
+  </properties>
+  ...
+  <skill>
+      <id>acme/nexus-test</id>
+      <version>[1.0,2.0)</version>
+      <repository>${skills.repository}</repository>
+  </skill>
+  ```
+
+Do not put `<repository>` into the plugin level `<configuration>`: it is the parameter of `oci-skills:push` and
+`oci-skills:pull`, so it would set the push target as well.
 
 Maven sources use the repositories, mirrors and credentials of the build, including the local repository and the
 reactor. OCI sources take their credentials from the `<server>` with the id `registryServerId` - the versions of a
@@ -398,6 +487,7 @@ with every build. A single skill can be installed from the command line without 
 mvn oci-skills:pull -Dskill=acme/nexus-test             # highest version from the configured sources
 mvn oci-skills:pull -Dskill=acme/nexus-test:1.2.0 -Dskill.pull.repository=teams/acme/skills
 mvn oci-skills:pull -Dskill.artifact=com.example.acme:acme-skills:1.2.0:nexus-test
+mvn oci-skills:pull -Dskill.artifact=com.example.acme:epsilon:1.2.0   # the main artifact with a single skill
 mvn oci-skills:pull -Dskill.image=registry.example.com/skills/acme/nexus-test:1.2.0
 ```
 
@@ -450,12 +540,13 @@ Additional CAs are trusted in addition to the JVM defaults. TLS verification can
 
 ### `oci-skills:archive` (default phase `verify`)
 
-| parameter     | property             | default                                              | description                       |
-|---------------|----------------------|------------------------------------------------------|-----------------------------------|
-| `archiveFile` | `skill.archive.file` | `${project.build.directory}/${project.build.finalName}.tar` | the tar file of all image layouts |
+| parameter     | property             | default                                                     | description                 |
+|---------------|----------------------|-------------------------------------------------------------|-----------------------------|
+| `archiveFile` | `skill.archive.file` | `${project.build.directory}/${project.build.finalName}.jar` | the [skill jar](#skill-jar) of all skills |
 
-Without packaging `skill` the tar file is attached with classifier `skills`. Every skill is attached with classifier
-`<name>` - suffixed with `-draft` or `-testing` unless its status is `published`.
+Without packaging `skill` the jar is attached with classifier `skills`. Every skill is attached as jar with classifier
+`<name>` - suffixed with `-draft` or `-testing` unless its status is `published` - next to `archiveFile`, e.g.
+`target/<finalName>-nexus-test.jar`.
 
 ### `oci-skills:sync` (default phase `initialize`, not bound)
 
@@ -468,8 +559,9 @@ Without packaging `skill` the tar file is attached with classifier `skills`. Eve
 | `workDirectory`    |                          | `${project.build.directory}/skill-pull`    | downloaded images - deleted after the goal           |
 | `skip`             | `skill.sync.skip`        | `false`                                    | skip installing skills                               |
 
-A `<source>` has an `id`, a `type` (`maven` or `oci`) and `groupId` and `artifactId` (`maven`, required) or
-`registry`, `repository` (optional), `registryServerId`, `caCertificates` and `allowPlainHttp` (`oci`).
+A `<source>` has an `id`, a `type` (`maven` or `oci`) and `groupId`, `artifactId` (`maven`, required) and
+`classifier` (`maven`, default `{name}`) or `registry`, `repository` (optional), `registryServerId`,
+`caCertificates` and `allowPlainHttp` (`oci`).
 
 ### `oci-skills:update`
 
@@ -485,7 +577,7 @@ for new versions regardless of their update policy, like with `-U`.
 | `status`           | `skill.status`              | `published` | with `skill`: the least mature status accepted                 |
 | `source`           | `skill.source`              |             | with `skill`: the only source to ask                           |
 | `repository`       | `skill.pull.repository`     |             | with `skill`: the repository of the skill, like `<repository>` of a `<skill>` |
-| `artifact`         | `skill.artifact`            |             | `<groupId>:<artifactId>:<version>:<classifier>`                |
+| `artifact`         | `skill.artifact`            |             | `<groupId>:<artifactId>:<version>[:<classifier>]` - without classifier the main artifact |
 | `image`            | `skill.image`               |             | `<registry>/<repository>:<tag>` or `<registry>/<repository>@<digest>` |
 | `registryServerId` | `skill.registryServerId`    |             | with `image`: id of the `<server>` in `settings.xml`           |
 | `allowPlainHttp`   | `skill.pull.allowPlainHttp` | `false`     | with `image`: connect without TLS - for local test registries only |
@@ -522,3 +614,27 @@ for new versions regardless of their update policy, like with `-U`.
 
 The word count follows skillctl 0.7.2 exactly: a YAML frontmatter starting with `---` is removed up to and including
 the next `\n---`, the rest is split at white space as defined by go's `unicode.IsSpace` and the fields are counted.
+
+### Skill jar
+
+`oci-skills:archive` stores the skills in maven repositories as plain jars - the jar of a single skill and the jar of
+all skills have the same layout:
+
+```
+nexus-test/                                   # the skill files, exactly as in the layer
+nexus-test/SKILL.md                           #   modes 0644, 0755 for directories and executables
+nexus-test/skill.yaml
+nexus-test/scripts/run.sh
+META-INF/oci-skills/nexus-test/manifest.json  # the manifest of the image, byte identical
+META-INF/oci-skills/nexus-test/config.json    # the config of the image, byte identical
+```
+
+* the directory is the `name` of the skill - unpacking a jar into `.claude/skills`, e.g. with `dependency:unpack`,
+  results in `.claude/skills/nexus-test/SKILL.md`
+* reproducible: entries sorted by path, all timestamps set to the `created` annotation of the image, no extra fields
+  and no `META-INF/MANIFEST.MF`
+* the digest of the image is kept: when a skill is installed from a jar, its digest is the SHA-256 of `manifest.json`.
+  The jar is verified before - `config.json` has to match the config descriptor of the manifest, and the layer rebuilt
+  from the skill files (with the `created` timestamp and the modes of the jar) has to have the diffID of the config.
+  The compressed layer is not compared, its bytes depend on the JDK. So a skill locked from an OCI registry may be
+  installed from a maven repository and vice versa.

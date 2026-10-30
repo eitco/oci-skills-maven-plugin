@@ -54,4 +54,10 @@ public class SkillConfiguration {
     String getRepository() {
         return repository;
     }
+
+    @Override
+    public String toString() {
+        return "SkillConfiguration[id=" + id + ", version=" + version + ", status=" + status + ", source=" + source
+                + ", repository=" + repository + "]";
+    }
 }

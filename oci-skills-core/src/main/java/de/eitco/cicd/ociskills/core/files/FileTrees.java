@@ -1,5 +1,7 @@
 package de.eitco.cicd.ociskills.core.files;
 
+import de.eitco.cicd.ociskills.core.SkillBuildException;
+
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -64,6 +66,24 @@ public final class FileTrees {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    /**
+     * Resolves the path of an archive entry against the directory it is extracted to.
+     *
+     * @param root the normalized, absolute directory to extract to
+     * @param path the relative path of the entry, separated by {@code /}
+     * @throws SkillBuildException if the path is absolute or points out of the directory
+     */
+    public static Path resolveEntry(Path root, String path) throws SkillBuildException {
+        if (path.isEmpty() || path.startsWith("/")) {
+            throw new SkillBuildException("entry '" + path + "' is not a relative path");
+        }
+        Path resolved = root.resolve(path).normalize();
+        if (!resolved.startsWith(root)) {
+            throw new SkillBuildException("entry " + path + " points out of the target directory");
+        }
+        return resolved;
     }
 
     /**

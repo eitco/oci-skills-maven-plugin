@@ -33,7 +33,7 @@
             <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
             <configuration>
                 <type>skill</type>
-                <extension>tar</extension>
+                <extension>jar</extension>
                 <packaging>skill</packaging>
                 <language>none</language>
                 <addedToClasspath>false</addedToClasspath>

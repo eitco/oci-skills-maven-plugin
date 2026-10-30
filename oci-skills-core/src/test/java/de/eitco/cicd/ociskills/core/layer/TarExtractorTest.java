@@ -2,6 +2,8 @@ package de.eitco.cicd.ociskills.core.layer;
 
 import de.eitco.cicd.ociskills.core.SkillBuildException;
 import de.eitco.cicd.ociskills.core.TestSkills;
+import de.eitco.cicd.ociskills.core.files.FileSelection;
+import de.eitco.cicd.ociskills.core.files.SkillFileCollector;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
+import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,18 +31,19 @@ class TarExtractorTest {
     Path tempDirectory;
 
     @Test
-    void extractsWhatTheArchiverWrites() throws Exception {
+    void extractsWhatTheLayerBuilderWrites() throws Exception {
         Path source = tempDirectory.resolve("source");
         TestSkills.write(source, "SKILL.md", "skill");
         Path script = TestSkills.write(source, "scripts/run.sh", "#!/bin/sh");
         Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwxr-xr-x"));
         String longPath = "references/" + "very-long-directory-name/".repeat(8) + "guide-mit-ümlaut.md";
         TestSkills.write(source, longPath, "guide");
-        Path archive = tempDirectory.resolve("source.tar");
-        new TarArchiver().archive(source, TIMESTAMP, archive);
+        Path layer = tempDirectory.resolve("layer.tar.gz");
+        new TarLayerBuilder().build(new SkillFileCollector(new FileSelection(null, List.of(), null)).collect(source),
+                TIMESTAMP, layer);
 
         Path target = tempDirectory.resolve("target");
-        try (InputStream in = Files.newInputStream(archive)) {
+        try (InputStream in = new GZIPInputStream(Files.newInputStream(layer))) {
             new TarExtractor().extract(in, target);
         }
 

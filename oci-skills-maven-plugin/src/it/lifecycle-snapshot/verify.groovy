@@ -29,11 +29,15 @@ assert positions == positions.sort(false)
 assert !log.contains(":push (default-push)")
 assert !log.contains(":eval") && !log.contains(":qualify")
 
-// the layouts are installed as tar artifact
+// the skills are installed as jar artifact
 File installed = new File(localRepositoryPath,
-        "de/eitco/cicd/it/lifecycle-snapshot/1.0.0-SNAPSHOT/lifecycle-snapshot-1.0.0-SNAPSHOT.tar")
+        "de/eitco/cicd/it/lifecycle-snapshot/1.0.0-SNAPSHOT/lifecycle-snapshot-1.0.0-SNAPSHOT.jar")
 assert installed.isFile()
-assert installed.bytes == new File(basedir, "target/lifecycle-snapshot-1.0.0-SNAPSHOT.tar").bytes
-String tar = new String(installed.bytes, "ISO-8859-1")
-assert tar.contains("nexus-test/index.json")
-assert tar.contains("nexus-test/oci-layout")
+assert installed.bytes == new File(basedir, "target/lifecycle-snapshot-1.0.0-SNAPSHOT.jar").bytes
+def names = new java.util.zip.ZipFile(installed).withCloseable { zip -> zip.entries().toList()*.name }
+assert names.contains("nexus-test/SKILL.md")
+assert names.contains("nexus-test/skill.yaml")
+assert names.contains("META-INF/oci-skills/nexus-test/manifest.json")
+assert names.contains("META-INF/oci-skills/nexus-test/config.json")
+assert !names.contains("META-INF/MANIFEST.MF")
+assert names.every { !it.contains("index.json") && !it.contains("blobs/") }

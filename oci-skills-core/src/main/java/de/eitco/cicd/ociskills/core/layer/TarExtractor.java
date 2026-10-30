@@ -1,6 +1,7 @@
 package de.eitco.cicd.ociskills.core.layer;
 
 import de.eitco.cicd.ociskills.core.SkillBuildException;
+import de.eitco.cicd.ociskills.core.files.FileTrees;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,9 +13,8 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermissions;
 
 /**
- * Extracts an uncompressed tar stream - e.g. a skill layer or an archive written by {@link TarArchiver} - into a
- * directory. Only regular files and directories are supported. Entries pointing out of the target directory are
- * rejected.
+ * Extracts an uncompressed tar stream - e.g. a skill layer - into a directory. Only regular files and directories
+ * are supported. Entries pointing out of the target directory are rejected.
  * <p>
  * Paths are read from the ustar header, a preceding PAX extended header or a GNU long name entry. Files with any
  * executable bit are made executable, if the file system supports POSIX permissions.
@@ -52,8 +52,8 @@ public class TarExtractor {
                     case TYPE_PAX_HEADER -> pendingPath = paxPath(readContent(tar, size));
                     case TYPE_GNU_LONG_NAME -> pendingPath = cString(readContent(tar, size), 0, (int) size);
                     case TYPE_PAX_GLOBAL_HEADER -> readContent(tar, size);
-                    case TYPE_DIRECTORY -> Files.createDirectories(resolve(root, path));
-                    case TYPE_FILE, TYPE_FILE_OLD -> writeFile(tar, resolve(root, path), size,
+                    case TYPE_DIRECTORY -> Files.createDirectories(FileTrees.resolveEntry(root, path));
+                    case TYPE_FILE, TYPE_FILE_OLD -> writeFile(tar, FileTrees.resolveEntry(root, path), size,
                             (octal(header, 100, 8) & 0111) != 0);
                     default -> throw new SkillBuildException("tar entry " + path + " has the unsupported type '"
                             + (char) type + "' - only regular files and directories are supported");
@@ -62,17 +62,6 @@ public class TarExtractor {
         } catch (IOException e) {
             throw new SkillBuildException("extracting into " + target + " failed: " + e, e);
         }
-    }
-
-    private static Path resolve(Path root, String path) throws SkillBuildException {
-        if (path.isEmpty() || path.startsWith("/")) {
-            throw new SkillBuildException("tar entry '" + path + "' is not a relative path");
-        }
-        Path resolved = root.resolve(path).normalize();
-        if (!resolved.startsWith(root)) {
-            throw new SkillBuildException("tar entry " + path + " points out of the target directory");
-        }
-        return resolved;
     }
 
     private static void writeFile(InputStream tar, Path file, long size, boolean executable) throws IOException {

@@ -35,6 +35,13 @@
                         </goals>
                     </execution>
                     <execution>
+                        <id>archive-skill-image</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>archive</goal>
+                        </goals>
+                    </execution>
+                    <execution>
                         <id>push-skill-image</id>
                         <phase>deploy</phase>
                         <goals>
